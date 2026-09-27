@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { WorkspaceLoader } from "@/components/WorkspaceLoader";
+import { WorkspaceLoader } from "@/components/ClientOnly";
 import { getProblem, PROBLEMS } from "@/lib/problems";
 
 export function generateStaticParams() {
