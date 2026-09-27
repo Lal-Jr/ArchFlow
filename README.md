@@ -6,6 +6,8 @@
 
 A visual distributed-systems simulator for learning system design: draw an architecture, push simulated traffic through it, and watch request flow, latency, queue buildup, failures, and bottlenecks play out live.
 
+**[▶ Try it live → archflow-sim.vercel.app](https://archflow-sim.vercel.app)**
+
 [![CI](https://github.com/Lal-Jr/ArchFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/Lal-Jr/ArchFlow/actions/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs)
 ![React](https://img.shields.io/badge/React-19-000?logo=react)
@@ -80,7 +82,7 @@ Four incidents with fixed traffic and hard goals: error rate, worst p99 latency 
 
 ## Quick start
 
-You need **Node.js 20.9 or newer** ([download](https://nodejs.org)).
+The fastest way is the live site: **[archflow-sim.vercel.app](https://archflow-sim.vercel.app)**. To run it locally, you need **Node.js 20.9 or newer** ([download](https://nodejs.org)).
 
 ```bash
 git clone https://github.com/Lal-Jr/ArchFlow.git
