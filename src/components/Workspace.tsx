@@ -12,12 +12,14 @@ import { grade } from "@/lib/grader";
 import { clearDesign, loadBest, saveBest } from "@/lib/storage";
 import { ComponentIcon } from "./ComponentIcon";
 import { DifficultyBadge } from "./DifficultyBadge";
+import { ProblemGuide } from "./ProblemGuide";
 import { TopBar } from "./TopBar";
 import { nodeTypes } from "./editor/ArchNode";
 import { defaultEdgeOptions, Editor, type Graph } from "./editor/Editor";
 import { edgeTypes } from "./editor/FlowEdge";
 
-type Mode = "practice" | "solution";
+type Mode = "practice" | "solution" | "guide";
+const MODE_LABEL: Record<Mode, string> = { practice: "Practice", guide: "Guide", solution: "Walkthrough" };
 
 export function Workspace({ problem }: { problem: Problem }) {
   const [mode, setMode] = useState<Mode>("practice");
@@ -27,7 +29,7 @@ export function Workspace({ problem }: { problem: Problem }) {
         right={
           <>
             <div className="flex rounded-full bg-white/10 p-1">
-              {(["practice", "solution"] as Mode[]).map((m) => (
+              {(["practice", "guide", "solution"] as Mode[]).map((m) => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
@@ -35,7 +37,7 @@ export function Workspace({ problem }: { problem: Problem }) {
                     mode === m ? "bg-white text-ink" : "text-white/70 hover:text-white"
                   }`}
                 >
-                  {m === "practice" ? "Practice" : "Walkthrough"}
+                  {MODE_LABEL[m]}
                 </button>
               ))}
             </div>
@@ -55,14 +57,20 @@ export function Workspace({ problem }: { problem: Problem }) {
         <h1 className="font-semibold">{problem.title}</h1>
         <DifficultyBadge difficulty={problem.difficulty} invert />
       </TopBar>
-      {mode === "practice" ? <Practice problem={problem} /> : <Walkthrough problem={problem} />}
+      {mode === "practice" ? (
+        <Practice problem={problem} onGuide={() => setMode("guide")} />
+      ) : mode === "guide" ? (
+        <ProblemGuide problem={problem} onPractice={() => setMode("practice")} onWalkthrough={() => setMode("solution")} />
+      ) : (
+        <Walkthrough problem={problem} />
+      )}
     </div>
   );
 }
 
 /* ---------------------------------- Practice ---------------------------------- */
 
-function Practice({ problem }: { problem: Problem }) {
+function Practice({ problem, onGuide }: { problem: Problem; onGuide: () => void }) {
   const [checked, setChecked] = useState(false);
   const [version, setVersion] = useState(0);
   const [best, setBest] = useState(() => loadBest(problem.slug));
@@ -94,6 +102,7 @@ function Practice({ problem }: { problem: Problem }) {
     <Editor
       key={version}
       storageKey={problem.slug}
+      initialTab="brief"
       reviewContext={{
         kind: "problem",
         title: `${problem.title}: ${problem.tagline}`,
@@ -104,7 +113,7 @@ function Practice({ problem }: { problem: Problem }) {
         ].slice(0, 20),
       }}
       tabs={(g) => [
-        { id: "brief", label: "Brief", content: <Brief problem={problem} /> },
+        { id: "brief", label: "Brief", content: <Brief problem={problem} onGuide={onGuide} /> },
         {
           id: "feedback",
           label: checked ? `Score ${scoreOf(g).score}%` : "Feedback",
@@ -132,12 +141,27 @@ function Practice({ problem }: { problem: Problem }) {
   );
 }
 
-function Brief({ problem }: { problem: Problem }) {
+function Brief({ problem, onGuide }: { problem: Problem; onGuide: () => void }) {
   return (
     <div className="space-y-6 p-5 text-sm">
       <div>
         <h2 className="text-xl font-bold tracking-tight">{problem.title}</h2>
         <p className="text-ink-3">{problem.tagline}</p>
+        {problem.askedAt.length > 0 && <p className="mt-1 text-xs text-ink-3">Reported at {problem.askedAt.join(", ")}</p>}
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {problem.concepts.map((c) => (
+            <span key={c} className="rounded-md bg-wash px-2 py-0.5 text-[11px] font-medium text-ink-2">
+              {c}
+            </span>
+          ))}
+        </div>
+        <button
+          onClick={onGuide}
+          className="mt-4 flex w-full items-center justify-between rounded-lg border border-line px-3 py-2.5 text-left font-semibold hover:border-ink"
+        >
+          Read the full guide
+          <span className="text-xs font-normal text-ink-3">API · data model · why</span>
+        </button>
       </div>
       <Section title="Functional" items={problem.functional} />
       <Section title="Non-functional" items={problem.nonFunctional} />
