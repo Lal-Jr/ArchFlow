@@ -64,6 +64,8 @@ function EditorInner({ storageKey, initial, tabs, footer }: EditorProps) {
     (saved?.edges ?? []).map((e) => ({ ...e, ...defaultEdgeOptions })),
   );
   const [tab, setTab] = useState("components");
+  // Fitting an empty canvas would re-center and zoom the moment the first node is dropped.
+  const [fitOnMount] = useState(() => (saved?.nodes.length ?? 0) > 0);
   const [connecting, setConnecting] = useState(false);
   const { screenToFlowPosition, fitView } = useReactFlow();
   const sim = useSimulation(nodes, edges);
@@ -188,7 +190,7 @@ function EditorInner({ storageKey, initial, tabs, footer }: EditorProps) {
             connectionRadius={36}
             defaultEdgeOptions={defaultEdgeOptions}
             deleteKeyCode={["Backspace", "Delete"]}
-            fitView
+            fitView={fitOnMount}
             fitViewOptions={{ maxZoom: 1, padding: { top: 0.2, bottom: 0.55, left: 0.1, right: 0.1 } }}
             proOptions={{ hideAttribution: true }}
           >

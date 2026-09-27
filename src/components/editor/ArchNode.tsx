@@ -87,7 +87,9 @@ export function ArchNode({ id, data, selected }: NodeProps<ArchNodeType>) {
           <div className="mb-1.5 flex items-baseline justify-between text-[11px] tabular-nums">
             <span className="font-semibold">{fmtRps(m.inRps)}/s</span>
             <span className="text-ink-3">
-              {role === "queue"
+              {m.status === "down"
+                ? "no response"
+                : role === "queue"
                 ? `${fmtRps(m.backlog)} queued`
                 : m.throttleRps > 0.5
                   ? `${fmtPct((m.throttleRps / m.inRps) * 100)} rejected`

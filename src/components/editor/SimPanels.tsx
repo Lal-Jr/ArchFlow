@@ -19,7 +19,7 @@ export function SimBar({ sim }: { sim: Simulation }) {
   const snap = useSnapshot();
   const current = snap ? offeredRps(sim.pattern, sim.rps, snap.t) : sim.rps;
   return (
-    <div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-white p-1.5 shadow-[0_4px_16px_rgb(0_0_0/0.14)]">
+    <div className="absolute left-1/2 top-4 z-20 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 whitespace-nowrap rounded-[26px] bg-white p-1.5 shadow-[0_4px_16px_rgb(0_0_0/0.14)]">
       <button
         onClick={() => sim.setRunning(!sim.running)}
         className="flex h-9 items-center gap-2 whitespace-nowrap rounded-full bg-ink pl-3.5 pr-4 text-sm font-semibold text-white hover:bg-ink-2"
