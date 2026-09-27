@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { pickHandles, solutionToGraph, COL_W, ROW_H, type ArchNodeType, type FlowEdgeType } from "@/lib/graph";
-import type { ComponentType } from "@/lib/catalog";
+import { gridGraph, solutionToGraph } from "@/lib/graph";
 import { PROBLEMS } from "@/lib/problems";
 import { saveDesign } from "@/lib/storage";
 import { DifficultyBadge } from "./DifficultyBadge";
@@ -12,37 +11,13 @@ import { Editor, type Graph } from "./editor/Editor";
 
 const KEY = "sandbox";
 
-/** A small grid-laid-out graph: [id, kind, label, col, row]. */
-function starter(
-  spec: [string, ComponentType, string, number, number][],
-  links: [string, string, number?][],
-): Graph {
-  const pos = new Map(spec.map(([id, , , col, row]) => [id, { col, row }]));
-  return {
-    nodes: spec.map(([id, kind, label, col, row]) => ({
-      id,
-      type: "arch",
-      position: { x: col * COL_W, y: row * ROW_H },
-      data: { kind, label },
-    })) as ArchNodeType[],
-    edges: links.map(([s, t, ratio]) => ({
-      id: `${s}-${t}`,
-      type: "flow",
-      source: s,
-      target: t,
-      ...pickHandles(pos.get(s)!, pos.get(t)!),
-      data: { ratio },
-    })) as FlowEdgeType[],
-  };
-}
-
 const TEMPLATES: { id: string; title: string; blurb: string; graph: () => Graph }[] = [
   {
     id: "three-tier",
     title: "Three-tier web app",
     blurb: "Load balancer, app servers, cache and database — the classic starting point.",
     graph: () =>
-      starter(
+      gridGraph(
         [
           ["c", "client", "Users", 0, 1],
           ["lb", "load_balancer", "Load Balancer", 1, 1],
@@ -58,7 +33,7 @@ const TEMPLATES: { id: string; title: string; blurb: string; graph: () => Graph 
     title: "Async job pipeline",
     blurb: "An API that offloads slow work to a queue and workers. Watch the backlog under spikes.",
     graph: () =>
-      starter(
+      gridGraph(
         [
           ["c", "client", "Users", 0, 1],
           ["lb", "load_balancer", "Load Balancer", 1, 1],
@@ -112,6 +87,7 @@ export function Sandbox() {
           <NavLink href="/sandbox" active>
             Simulator
           </NavLink>
+          <NavLink href="/challenges">Challenges</NavLink>
           <NavLink href="/#problems">Practice</NavLink>
           <NavLink href="/learn">Glossary</NavLink>
         </nav>

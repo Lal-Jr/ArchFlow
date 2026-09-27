@@ -13,6 +13,7 @@ export default function LearnPage() {
       <TopBar>
         <nav className="flex gap-1">
           <NavLink href="/sandbox">Simulator</NavLink>
+          <NavLink href="/challenges">Challenges</NavLink>
           <NavLink href="/#problems">Practice</NavLink>
           <NavLink href="/learn" active>
             Glossary

@@ -53,6 +53,7 @@ export default function Home() {
           <Wordmark />
           <div className="hidden gap-1 sm:flex">
             <NavLink href="/sandbox">Simulator</NavLink>
+            <NavLink href="/challenges">Challenges</NavLink>
             <NavLink href="#problems">Practice</NavLink>
             <NavLink href="/learn">Glossary</NavLink>
           </div>
@@ -126,6 +127,22 @@ export default function Home() {
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pt-20 sm:px-6">
+        <Link href="/challenges" className="group grid items-center gap-8 rounded-3xl bg-ink p-8 text-white sm:p-12 md:grid-cols-[1fr_auto]">
+          <div>
+            <p className="mb-3 text-sm font-medium text-white/60">Challenges</p>
+            <h2 className="mb-3 text-4xl font-bold tracking-tight">Can you survive Black Friday on a budget?</h2>
+            <p className="max-w-xl text-white/70">
+              Four incidents with fixed traffic and hard goals: error rate, p99 latency and monthly cost. Component specs are
+              locked, so you win with architecture, not bigger numbers.
+            </p>
+          </div>
+          <span className="flex items-center gap-2 justify-self-start rounded-lg bg-white px-5 py-3.5 font-semibold text-ink md:justify-self-end">
+            Take a challenge <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+          </span>
+        </Link>
       </section>
 
       <section id="problems" className="mx-auto max-w-6xl scroll-mt-6 px-4 py-20 sm:px-6">

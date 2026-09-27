@@ -59,3 +59,27 @@ export function toSim(nodes: ArchNodeType[], edges: FlowEdgeType[]): { nodes: Si
     edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target, ratio: e.data?.ratio })),
   };
 }
+
+/** Builds a graph laid out on the grid: nodes as [id, kind, label, col, row, config?], links as [from, to, ratio?]. */
+export function gridGraph(
+  spec: [string, ComponentType, string, number, number, Partial<NodeConfig>?][],
+  links: [string, string, number?][],
+): { nodes: ArchNodeType[]; edges: FlowEdgeType[] } {
+  const pos = new Map(spec.map(([id, , , col, row]) => [id, { col, row }]));
+  return {
+    nodes: spec.map(([id, kind, label, col, row, config]) => ({
+      id,
+      type: "arch",
+      position: { x: col * COL_W, y: row * ROW_H },
+      data: { kind, label, ...(config ? { config } : {}) },
+    })),
+    edges: links.map(([s, t, ratio]) => ({
+      id: `${s}-${t}`,
+      type: "flow",
+      source: s,
+      target: t,
+      ...pickHandles(pos.get(s)!, pos.get(t)!),
+      data: { ratio },
+    })),
+  };
+}

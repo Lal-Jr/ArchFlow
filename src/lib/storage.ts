@@ -64,3 +64,23 @@ export function loadBest(slug: string): number {
 export function saveBest(slug: string, score: number) {
   write(bestKey(slug), score);
 }
+
+export interface ChallengeBest {
+  passed: boolean;
+  /** Peak monthly cost of the cheapest passing run. */
+  cost: number;
+}
+
+const challengeKey = (id: string) => `archflow:challenge:${id}`;
+
+export function loadChallengeBest(id: string): ChallengeBest | null {
+  return read<ChallengeBest>(challengeKey(id));
+}
+
+/** Keeps the cheapest passing run. */
+export function saveChallengeBest(id: string, result: ChallengeBest) {
+  const prev = loadChallengeBest(id);
+  if (!result.passed) return;
+  if (prev?.passed && prev.cost <= result.cost) return;
+  write(challengeKey(id), result);
+}

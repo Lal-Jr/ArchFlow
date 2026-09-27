@@ -24,7 +24,8 @@ import { edgeTypes } from "./FlowEdge";
 import { EdgeInspector, NodeInspector } from "./Inspector";
 import { DND_TYPE, Palette } from "./Palette";
 import { InsightsPanel, SimBar, SimSheet } from "./SimPanels";
-import { SimContext, useSimulation } from "./useSimulation";
+import { SimContext, useSimulation, type Simulation } from "./useSimulation";
+import type { Challenge } from "@/lib/challenges";
 
 export interface Graph {
   nodes: ArchNodeType[];
@@ -44,9 +45,12 @@ export const defaultEdgeOptions = {
 interface EditorProps {
   storageKey: string;
   initial?: Graph;
-  /** Extra left-panel tabs, rendered after "Components" with the live graph. */
-  tabs?: (g: Graph) => Tab[];
+  /** Extra left-panel tabs, rendered after "Components" with the live graph and simulation. */
+  tabs?: (g: Graph, sim: Simulation) => Tab[];
+  initialTab?: string;
   footer?: (g: Graph) => React.ReactNode;
+  /** Challenge mode: fixed traffic and duration, locked component physics. */
+  challenge?: Challenge;
 }
 
 export function Editor(props: EditorProps) {
@@ -57,18 +61,18 @@ export function Editor(props: EditorProps) {
   );
 }
 
-function EditorInner({ storageKey, initial, tabs, footer }: EditorProps) {
+function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge }: EditorProps) {
   const [saved] = useState(() => loadDesign(storageKey) ?? initial ?? null);
   const [nodes, setNodes, onNodesChange] = useNodesState<ArchNodeType>(saved?.nodes ?? []);
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdgeType>(
     (saved?.edges ?? []).map((e) => ({ ...e, ...defaultEdgeOptions })),
   );
-  const [tab, setTab] = useState("components");
+  const [tab, setTab] = useState(initialTab ?? "components");
   // Fitting an empty canvas would re-center and zoom the moment the first node is dropped.
   const [fitOnMount] = useState(() => (saved?.nodes.length ?? 0) > 0);
   const [connecting, setConnecting] = useState(false);
   const { screenToFlowPosition, fitView } = useReactFlow();
-  const sim = useSimulation(nodes, edges);
+  const sim = useSimulation(nodes, edges, challenge);
 
   useEffect(() => {
     saveDesign(storageKey, { nodes, edges });
@@ -142,7 +146,7 @@ function EditorInner({ storageKey, initial, tabs, footer }: EditorProps) {
   const graph = { nodes, edges };
   const allTabs: Tab[] = [
     { id: "components", label: "Components", content: <Palette onAdd={addAtCenter} /> },
-    ...(tabs?.(graph) ?? []),
+    ...(tabs?.(graph, sim) ?? []),
   ];
   const activeTab = allTabs.find((t) => t.id === tab) ?? allTabs[0];
 
@@ -217,6 +221,7 @@ function EditorInner({ storageKey, initial, tabs, footer }: EditorProps) {
             <NodeInspector
               key={selectedNode.id}
               node={selectedNode}
+              locked={!!challenge}
               hasSyncDeps={edges.some(
                 (e) => e.source === selectedNode.id && !["queue", "stream"].includes(nodes.find((n) => n.id === e.target)?.data.kind ?? ""),
               )}

@@ -22,11 +22,21 @@ export function SimBar({ sim }: { sim: Simulation }) {
   return (
     <div className="absolute left-1/2 top-4 z-20 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 whitespace-nowrap rounded-[26px] bg-white p-1.5 shadow-[0_4px_16px_rgb(0_0_0/0.14)]">
       <button
-        onClick={() => sim.setRunning(!sim.running)}
+        onClick={sim.toggle}
         className="flex h-9 items-center gap-2 whitespace-nowrap rounded-full bg-ink pl-3.5 pr-4 text-sm font-semibold text-white hover:bg-ink-2"
       >
         {sim.running ? <Pause size={15} fill="#fff" /> : <Play size={15} fill="#fff" />}
-        {sim.running ? "Pause" : snap ? "Resume" : "Run traffic"}
+        {sim.running
+          ? "Pause"
+          : sim.locked
+            ? sim.finished
+              ? "Run again"
+              : snap
+                ? "Resume"
+                : "Start challenge"
+            : snap
+              ? "Resume"
+              : "Run traffic"}
       </button>
 
       <div className="mx-2 flex items-center gap-2.5">
@@ -37,7 +47,9 @@ export function SimBar({ sim }: { sim: Simulation }) {
           step={0.5}
           value={toSlider(sim.rps)}
           onChange={(e) => sim.setRps(toRps(Number(e.target.value)))}
-          className="w-24"
+          disabled={sim.locked}
+          title={sim.locked ? "Traffic is fixed by the challenge" : undefined}
+          className="w-24 disabled:opacity-40"
           aria-label="Target traffic"
         />
         <div className="w-[76px] text-sm leading-none">
@@ -52,8 +64,9 @@ export function SimBar({ sim }: { sim: Simulation }) {
             key={p.id}
             title={p.hint}
             onClick={() => sim.setPattern(p.id)}
-            className={`whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-medium ${
-              sim.pattern === p.id ? "bg-ink text-white" : "text-ink-2 hover:text-ink"
+            disabled={sim.locked}
+            className={`whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-medium disabled:cursor-not-allowed ${
+              sim.pattern === p.id ? "bg-ink text-white" : sim.locked ? "text-ink-4" : "text-ink-2 hover:text-ink"
             }`}
           >
             {p.label}
@@ -76,7 +89,10 @@ export function SimBar({ sim }: { sim: Simulation }) {
         ))}
       </div>
 
-      <span className="ml-1 w-9 text-right text-xs tabular-nums text-ink-3">{snap ? `${Math.floor(snap.t)}s` : "0s"}</span>
+      <span className="ml-1 min-w-9 text-right text-xs tabular-nums text-ink-3">
+        {snap ? `${Math.floor(snap.t)}s` : "0s"}
+        {sim.duration != null && ` / ${sim.duration}s`}
+      </span>
       <button onClick={sim.reset} title="Reset simulation" className="rounded-full p-2 text-ink-2 hover:bg-wash hover:text-ink">
         <RotateCcw size={15} />
       </button>

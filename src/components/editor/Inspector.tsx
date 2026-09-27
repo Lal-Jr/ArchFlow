@@ -30,15 +30,28 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 
 const inputCls =
-  "w-full rounded-lg border-0 bg-wash px-3 py-2 text-sm tabular-nums outline-none ring-1 ring-transparent focus:bg-white focus:ring-ink";
+  "w-full rounded-lg border-0 bg-wash px-3 py-2 text-sm tabular-nums outline-none ring-1 ring-transparent focus:bg-white focus:ring-ink disabled:cursor-not-allowed disabled:text-ink-3";
 
-function NumberInput({ value, onChange, min = 0, step = 1 }: { value: number; onChange: (n: number) => void; min?: number; step?: number }) {
+function NumberInput({
+  value,
+  onChange,
+  min = 0,
+  step = 1,
+  disabled,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  min?: number;
+  step?: number;
+  disabled?: boolean;
+}) {
   return (
     <input
       type="number"
       min={min}
       step={step}
       value={value}
+      disabled={disabled}
       onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
       onKeyDown={(e) => e.stopPropagation()}
       className={inputCls}
@@ -78,20 +91,23 @@ function Toggle({
   label,
   hint,
   danger,
+  disabled,
 }: {
   on: boolean;
   onChange: (b: boolean) => void;
   label: string;
   hint?: string;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       role="switch"
       aria-checked={on}
       aria-label={label}
+      disabled={disabled}
       onClick={() => onChange(!on)}
-      className="flex w-full items-center justify-between gap-3 rounded-lg bg-wash px-3 py-2.5 text-left text-sm"
+      className="flex w-full items-center justify-between gap-3 rounded-lg bg-wash px-3 py-2.5 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span>
         <span className="block font-medium">{label}</span>
@@ -121,12 +137,15 @@ function Header({ title, onClose, onDelete, icon }: { title: string; onClose: ()
 
 export function NodeInspector({
   node,
+  locked = false,
   hasSyncDeps,
   onChange,
   onDelete,
   onClose,
 }: {
   node: ArchNodeType;
+  /** Challenge mode: capacity, latency, hit rates and chaos are part of the scenario. */
+  locked?: boolean;
   /** Whether this node calls anything synchronously — retries and breakers only matter then. */
   hasSyncDeps: boolean;
   onChange: (data: Partial<ArchNodeData>) => void;
@@ -184,17 +203,20 @@ export function NodeInspector({
 
         {role !== "source" && (
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider">Capacity</h3>
+            <h3 className="flex items-center justify-between text-xs font-bold uppercase tracking-wider">
+              Capacity
+              {locked && <span className="font-medium normal-case tracking-normal text-ink-3">Per-replica specs are fixed in challenges</span>}
+            </h3>
             <div className="grid grid-cols-2 gap-3">
               <Field label={cfg.autoscale ? "Min replicas" : "Replicas"}>
                 <Stepper value={cfg.replicas} onChange={(replicas) => set({ replicas })} />
               </Field>
               <Field label="Each handles" hint="rps">
-                <NumberInput value={cfg.capacity} onChange={(capacity) => set({ capacity })} step={100} />
+                <NumberInput value={cfg.capacity} onChange={(capacity) => set({ capacity })} step={100} disabled={locked} />
               </Field>
             </div>
             <Field label="Base latency" hint="ms">
-              <NumberInput value={cfg.latencyMs} onChange={(latencyMs) => set({ latencyMs })} step={1} />
+              <NumberInput value={cfg.latencyMs} onChange={(latencyMs) => set({ latencyMs })} step={1} disabled={locked} />
             </Field>
             <p className="flex justify-between text-xs text-ink-3">
               <span>
@@ -254,25 +276,29 @@ export function NodeInspector({
               step={0.01}
               value={cfg.hitRate}
               onChange={(e) => set({ hitRate: Number(e.target.value) })}
-              className="w-full"
+              disabled={locked}
+              className="w-full disabled:opacity-40"
             />
           </Field>
         )}
         {kind === "rate_limiter" && (
           <Field label="Allow up to" hint="rps, rest get 429">
-            <NumberInput value={cfg.rateLimit} onChange={(rateLimit) => set({ rateLimit })} step={100} />
+            <NumberInput value={cfg.rateLimit} onChange={(rateLimit) => set({ rateLimit })} step={100} disabled={locked} />
           </Field>
         )}
         {kind === "scheduler" && (
           <Field label="Emits" hint="jobs/sec">
-            <NumberInput value={cfg.sourceRps} onChange={(sourceRps) => set({ sourceRps })} step={1} />
+            <NumberInput value={cfg.sourceRps} onChange={(sourceRps) => set({ sourceRps })} step={1} disabled={locked} />
           </Field>
         )}
 
         {role !== "source" && (
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider">Chaos</h3>
-            <Toggle label="Kill this node" danger on={cfg.down} onChange={(down) => set({ down })} />
+            <h3 className="flex items-center justify-between text-xs font-bold uppercase tracking-wider">
+              Chaos
+              {locked && <span className="font-medium normal-case tracking-normal text-ink-3">Fixed by the challenge</span>}
+            </h3>
+            <Toggle label="Kill this node" danger on={cfg.down} onChange={(down) => set({ down })} disabled={locked} />
             <Field label="Inject latency" hint={`+${cfg.extraLatencyMs}ms`}>
               <input
                 type="range"
@@ -281,7 +307,8 @@ export function NodeInspector({
                 step={10}
                 value={cfg.extraLatencyMs}
                 onChange={(e) => set({ extraLatencyMs: Number(e.target.value) })}
-                className="w-full"
+                disabled={locked}
+                className="w-full disabled:opacity-40"
               />
             </Field>
           </div>
