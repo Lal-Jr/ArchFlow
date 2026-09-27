@@ -1,4 +1,5 @@
 import type { ComponentType } from "./catalog";
+import type { NodeConfig } from "./sim/config";
 
 export type Difficulty = "Easy" | "Medium" | "Hard";
 
@@ -10,12 +11,16 @@ export interface SolutionNode {
   col: number;
   row: number;
   note: string;
+  /** Simulation overrides; otherwise the component's defaults apply. */
+  config?: Partial<NodeConfig>;
 }
 
 export interface SolutionEdge {
   from: string;
   to: string;
   label?: string;
+  /** Calls per request (fan-out) or traffic weight (routers). See SimEdge.ratio. */
+  ratio?: number;
 }
 
 export type Checkpoint =
@@ -145,7 +150,7 @@ export const PROBLEMS: Problem[] = [
         { from: "lb", to: "svc" },
         { from: "svc", to: "cache", label: "read-through" },
         { from: "svc", to: "db", label: "persist / miss" },
-        { from: "svc", to: "kgs", label: "get key batch" },
+        { from: "svc", to: "kgs", label: "get key batch", ratio: 0.01 },
         { from: "cron", to: "db", label: "purge expired" },
       ],
     },
@@ -237,7 +242,7 @@ export const PROBLEMS: Problem[] = [
         { from: "c", to: "lb" },
         { from: "lb", to: "rl" },
         { from: "rl", to: "redis", label: "check & decrement" },
-        { from: "rl", to: "rules", label: "load rules" },
+        { from: "rl", to: "rules", label: "load rules", ratio: 0.001 },
         { from: "rl", to: "api", label: "allowed" },
       ],
     },
@@ -337,10 +342,10 @@ export const PROBLEMS: Problem[] = [
         { from: "c", to: "lb" },
         { from: "lb", to: "ws", label: "WebSocket" },
         { from: "ws", to: "reg", label: "lookup / presence" },
-        { from: "ws", to: "db", label: "persist" },
-        { from: "ws", to: "q", label: "recipient offline" },
+        { from: "ws", to: "db", label: "persist", ratio: 1 },
+        { from: "ws", to: "q", label: "recipient offline", ratio: 0.1 },
         { from: "q", to: "push" },
-        { from: "lb", to: "media", label: "HTTPS" },
+        { from: "lb", to: "media", label: "HTTPS", ratio: 0.05 },
         { from: "media", to: "s3" },
       ],
     },
@@ -436,15 +441,15 @@ export const PROBLEMS: Problem[] = [
       ],
       edges: [
         { from: "c", to: "lb" },
-        { from: "lb", to: "post" },
-        { from: "lb", to: "feed" },
+        { from: "lb", to: "post", ratio: 1 },
+        { from: "lb", to: "feed", ratio: 7 },
         { from: "post", to: "posts", label: "store" },
         { from: "post", to: "q", label: "PostCreated" },
         { from: "q", to: "w" },
-        { from: "w", to: "graph", label: "get followers" },
-        { from: "w", to: "fc", label: "push post ID" },
+        { from: "w", to: "graph", label: "get followers", ratio: 1 },
+        { from: "w", to: "fc", label: "push to 200 feeds", ratio: 200 },
         { from: "feed", to: "fc", label: "read timeline" },
-        { from: "feed", to: "posts", label: "hydrate" },
+        { from: "feed", to: "posts", label: "hydrate", ratio: 1 },
         { from: "c", to: "cdn", label: "images" },
         { from: "cdn", to: "s3" },
       ],
@@ -531,7 +536,7 @@ export const PROBLEMS: Problem[] = [
         { id: "up", type: "service", label: "Upload Service", col: 2, row: 0.5, note: "Issues resumable / presigned upload URLs and records the video as 'processing'." },
         { id: "raw", type: "object_storage", label: "Raw Uploads", col: 3, row: -0.3, note: "Original files, uploaded in chunks." },
         { id: "q", type: "queue", label: "Transcode Queue", col: 3, row: 1, note: "One job per video, split into per-chunk jobs for parallelism." },
-        { id: "tx", type: "worker", label: "Transcoders", col: 4, row: 1, note: "Encode to 240p–4K in H.264/VP9/AV1, split into ~4 s segments with an HLS/DASH manifest." },
+        { id: "tx", type: "worker", label: "Transcoders", col: 4, row: 1, note: "Encode to 240p–4K in H.264/VP9/AV1, split into ~4 s segments with an HLS/DASH manifest.", config: { replicas: 20, capacity: 2, latencyMs: 30_000 } },
         { id: "enc", type: "object_storage", label: "Encoded Videos", col: 5, row: 1.8, note: "Segments and manifests. Origin for the CDN." },
         { id: "vs", type: "service", label: "Video Service", col: 2, row: 2.6, note: "Video pages: metadata, manifest URL, recommendations." },
         { id: "cache", type: "cache", label: "Metadata Cache", col: 3, row: 2.2, note: "Hot video metadata." },
@@ -541,17 +546,17 @@ export const PROBLEMS: Problem[] = [
       ],
       edges: [
         { from: "c", to: "lb" },
-        { from: "lb", to: "up" },
+        { from: "lb", to: "up", ratio: 0.02 },
         { from: "up", to: "raw", label: "upload chunks" },
         { from: "up", to: "q", label: "enqueue job" },
         { from: "q", to: "tx" },
         { from: "tx", to: "raw", label: "read" },
-        { from: "tx", to: "enc", label: "renditions" },
+        { from: "tx", to: "enc", label: "5 renditions", ratio: 5 },
         { from: "tx", to: "db", label: "mark ready" },
         { from: "lb", to: "vs" },
         { from: "vs", to: "cache" },
         { from: "vs", to: "db" },
-        { from: "vs", to: "search" },
+        { from: "vs", to: "search", ratio: 0.1 },
         { from: "c", to: "cdn", label: "stream segments" },
         { from: "cdn", to: "enc", label: "cache miss" },
       ],
@@ -630,20 +635,20 @@ export const PROBLEMS: Problem[] = [
         { id: "m", type: "service", label: "Matching Service", col: 2, row: 1, note: "Finds nearby available drivers, ranks them by ETA, sends offers, handles accept/timeout." },
         { id: "ws", type: "websocket", label: "Realtime Gateway", col: 2, row: 3, note: "Persistent connections to drivers and riders for pings, offers, and live tracking." },
         { id: "k", type: "stream", label: "Location Stream", col: 3, row: 3, note: "Kafka topic partitioned by city or geohash." },
-        { id: "loc", type: "worker", label: "Location Updater", col: 4, row: 3, note: "Consumes pings and updates the driver's position in the geo index." },
+        { id: "loc", type: "worker", label: "Location Updater", col: 4, row: 3, note: "Consumes pings and updates the driver's position in the geo index.", config: { replicas: 4, capacity: 1_000, latencyMs: 2 } },
         { id: "geo", type: "cache", label: "Geo Index (Redis)", col: 4, row: 2, note: "GEOADD / GEOSEARCH on driver positions, sharded by region." },
         { id: "trips", type: "sql_db", label: "Trips DB", col: 3, row: 0, note: "trip_id, rider, driver, state, fare. Transactions prevent double booking." },
       ],
       edges: [
         { from: "r", to: "gw", label: "request ride" },
         { from: "d", to: "gw" },
-        { from: "gw", to: "m" },
-        { from: "gw", to: "ws" },
+        { from: "gw", to: "m", ratio: 1 },
+        { from: "gw", to: "ws", ratio: 4 },
         { from: "ws", to: "k", label: "location pings" },
         { from: "k", to: "loc" },
         { from: "loc", to: "geo", label: "update position" },
         { from: "m", to: "geo", label: "nearby drivers" },
-        { from: "m", to: "trips", label: "create trip" },
+        { from: "m", to: "trips", label: "create trip", ratio: 1 },
         { from: "m", to: "ws", label: "dispatch offer" },
       ],
     },
