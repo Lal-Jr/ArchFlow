@@ -26,6 +26,8 @@ import { DND_TYPE, Palette } from "./Palette";
 import { InsightsPanel, SimBar, SimSheet } from "./SimPanels";
 import { SimContext, useSimulation, type Simulation } from "./useSimulation";
 import type { Challenge } from "@/lib/challenges";
+import type { ReviewRequest } from "@/lib/review";
+import { ReviewPanel } from "./ReviewPanel";
 
 export interface Graph {
   nodes: ArchNodeType[];
@@ -51,6 +53,8 @@ interface EditorProps {
   footer?: (g: Graph) => React.ReactNode;
   /** Challenge mode: fixed traffic and duration, locked component physics. */
   challenge?: Challenge;
+  /** What the design is for — sent with AI reviews. */
+  reviewContext?: ReviewRequest["context"];
 }
 
 export function Editor(props: EditorProps) {
@@ -61,7 +65,7 @@ export function Editor(props: EditorProps) {
   );
 }
 
-function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge }: EditorProps) {
+function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge, reviewContext }: EditorProps) {
   const [saved] = useState(() => loadDesign(storageKey) ?? initial ?? null);
   const [nodes, setNodes, onNodesChange] = useNodesState<ArchNodeType>(saved?.nodes ?? []);
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdgeType>(
@@ -71,6 +75,7 @@ function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge 
   // Fitting an empty canvas would re-center and zoom the moment the first node is dropped.
   const [fitOnMount] = useState(() => (saved?.nodes.length ?? 0) > 0);
   const [connecting, setConnecting] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
   const { screenToFlowPosition, fitView } = useReactFlow();
   const sim = useSimulation(nodes, edges, challenge);
 
@@ -249,7 +254,24 @@ function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge 
               onClose={clearSelection}
             />
           ) : (
-            <InsightsPanel compiled={sim.compiled} onFocus={focusNode} />
+            <div hidden={!reviewing}>
+              {/* Kept mounted while hidden so a finished review survives a trip back to the insights. */}
+              <ReviewPanel
+                nodes={nodes}
+                edges={edges}
+                compiled={sim.compiled}
+                context={
+                  reviewContext ??
+                  (challenge
+                    ? { kind: "challenge", title: challenge.title, details: [challenge.brief] }
+                    : { kind: "sandbox", title: "Free-form design", details: [] })
+                }
+                onBack={() => setReviewing(false)}
+              />
+            </div>
+          )}
+          {!selectedNode && !selectedEdge && !reviewing && (
+            <InsightsPanel compiled={sim.compiled} onFocus={focusNode} onReview={() => setReviewing(true)} />
           )}
         </aside>
       </div>

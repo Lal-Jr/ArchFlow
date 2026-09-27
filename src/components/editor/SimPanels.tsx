@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, CircleCheck, Info, OctagonAlert, Pause, Play, RotateCcw, TriangleAlert } from "lucide-react";
+import { ChevronDown, ChevronUp, CircleCheck, Info, OctagonAlert, Pause, Play, RotateCcw, Sparkles, TriangleAlert } from "lucide-react";
 import type { Compiled } from "@/lib/sim/engine";
 import { monthlyCost } from "@/lib/sim/config";
 import { fmtMs, fmtPct, fmtRps, fmtUsd } from "@/lib/sim/format";
@@ -217,7 +217,15 @@ const SEV: Record<Severity, { Icon: typeof Info; cls: string; label: string }> =
   good: { Icon: CircleCheck, cls: "text-good", label: "Good" },
 };
 
-export function InsightsPanel({ compiled, onFocus }: { compiled: Compiled; onFocus: (id: string) => void }) {
+export function InsightsPanel({
+  compiled,
+  onFocus,
+  onReview,
+}: {
+  compiled: Compiled;
+  onFocus: (id: string) => void;
+  onReview: () => void;
+}) {
   const snap = useSnapshot();
   const insights = snap ? deriveInsights(compiled, snap) : [];
   const cost = monthlyCost(
@@ -233,6 +241,18 @@ export function InsightsPanel({ compiled, onFocus }: { compiled: Compiled; onFoc
           <span className="text-ink-3">/month</span>
         </span>
       </div>
+      <button
+        onClick={onReview}
+        className="mb-5 flex w-full items-center gap-3 rounded-xl border border-line p-3 text-left hover:border-ink"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink text-white">
+          <Sparkles size={15} />
+        </span>
+        <span>
+          <span className="block font-semibold">AI design review</span>
+          <span className="block text-xs text-ink-3">Get interviewer-style feedback from Claude</span>
+        </span>
+      </button>
       <h2 className="text-lg font-bold tracking-tight">Live insights</h2>
       <p className="mb-4 text-sm text-ink-3">
         {snap ? "What the simulator sees right now." : "Run traffic to see bottlenecks, backlogs and failures as they happen."}

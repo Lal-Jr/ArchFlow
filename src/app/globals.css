@@ -74,3 +74,8 @@ input[type="range"] {
 .af-connecting .react-flow__handle {
   opacity: 1 !important;
 }
+
+@keyframes slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
