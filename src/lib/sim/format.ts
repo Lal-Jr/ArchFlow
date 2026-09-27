@@ -19,3 +19,7 @@ export function fmtPct(n: number) {
   if (n >= 10) return `${Math.round(n)}%`;
   return `${n.toFixed(1)}%`;
 }
+
+export function fmtUsd(n: number) {
+  return `$${Math.round(n).toLocaleString("en-US")}`;
+}

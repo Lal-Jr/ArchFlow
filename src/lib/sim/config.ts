@@ -15,6 +15,13 @@ export interface NodeConfig {
   down: boolean;
   /** Chaos: added latency, e.g. a slow disk or GC pauses. */
   extraLatencyMs: number;
+  /** Resilience: times this node retries a failed call to a dependency. */
+  retries: number;
+  /** Resilience: stop calling a dependency that is failing, so it can recover. */
+  circuitBreaker: boolean;
+  /** Elasticity: add replicas under load (starting from `replicas`, up to `maxReplicas`). */
+  autoscale: boolean;
+  maxReplicas: number;
 }
 
 export type NodeRole = "source" | "route" | "compute" | "cache" | "queue" | "store" | "limiter";
@@ -39,7 +46,17 @@ export const ROLE: Record<ComponentType, NodeRole> = {
   search: "store",
 };
 
-const base = { hitRate: 0, rateLimit: 0, sourceRps: 0, down: false, extraLatencyMs: 0 };
+const base = {
+  hitRate: 0,
+  rateLimit: 0,
+  sourceRps: 0,
+  down: false,
+  extraLatencyMs: 0,
+  retries: 0,
+  circuitBreaker: false,
+  autoscale: false,
+  maxReplicas: 20,
+};
 
 export const DEFAULTS: Record<ComponentType, NodeConfig> = {
   client: { ...base, replicas: 1, capacity: 0, latencyMs: 0 },
@@ -61,6 +78,32 @@ export const DEFAULTS: Record<ComponentType, NodeConfig> = {
   search: { ...base, replicas: 2, capacity: 1_500, latencyMs: 25 },
 };
 
+/** Rough monthly cost of one replica, in USD — enough to reason about tradeoffs, not a price list. */
+export const COST_PER_REPLICA: Record<ComponentType, number> = {
+  client: 0,
+  scheduler: 5,
+  dns: 20,
+  cdn: 150,
+  load_balancer: 25,
+  api_gateway: 60,
+  rate_limiter: 40,
+  cache: 110,
+  service: 70,
+  websocket: 90,
+  worker: 60,
+  queue: 40,
+  stream: 300,
+  sql_db: 350,
+  nosql_db: 250,
+  object_storage: 50,
+  search: 280,
+};
+
+/** Roles that call other components, so retries and circuit breakers apply to them. */
+export const CALLER_ROLES: NodeRole[] = ["source", "route", "limiter", "compute"];
+/** Roles that can autoscale — stateless tiers, where adding replicas is cheap. */
+export const SCALABLE_ROLES: NodeRole[] = ["route", "limiter", "compute"];
+
 export function resolveConfig(kind: ComponentType, partial?: Partial<NodeConfig>): NodeConfig {
   return { ...DEFAULTS[kind], ...partial };
 }
@@ -75,3 +118,11 @@ export const ROLE_BEHAVIOR: Record<NodeRole, string> = {
   queue: "Buffers messages. Consumers pull as fast as their capacity allows, so the backlog grows when producers outpace them.",
   store: "Terminal data store. Requests end here.",
 };
+
+/** Estimated monthly cost of a design, using live (autoscaled) replica counts when given. */
+export function monthlyCost(
+  nodes: { id: string; kind: ComponentType; config: NodeConfig }[],
+  liveReplicas?: Record<string, number>,
+) {
+  return nodes.reduce((sum, n) => sum + COST_PER_REPLICA[n.kind] * (liveReplicas?.[n.id] ?? n.config.replicas), 0);
+}

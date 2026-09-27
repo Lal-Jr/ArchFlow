@@ -33,4 +33,31 @@ describe("deriveInsights", () => {
     const ins = insightsFor([node("c", "client"), node("api", "service", { replicas: 1 })], [edge("c", "api")], 3000);
     expect(ins[0].severity).toBe("critical");
   });
+
+  it("calls out a retry storm", () => {
+    const ins = insightsFor(
+      [node("c", "client"), node("api", "service", { retries: 3 }), node("db", "sql_db", { capacity: 500 })],
+      [edge("c", "api"), edge("api", "db")],
+      1000,
+    );
+    expect(ins.some((i) => i.id === "storm-api->db" && i.severity === "critical")).toBe(true);
+  });
+
+  it("explains an open circuit breaker", () => {
+    const ins = insightsFor(
+      [node("c", "client"), node("api", "service", { circuitBreaker: true }), node("db", "sql_db", { down: true })],
+      [edge("c", "api"), edge("api", "db")],
+      500,
+    );
+    expect(ins.some((i) => i.id === "breaker-api->db")).toBe(true);
+  });
+
+  it("suggests a breaker when a service keeps waiting on a dead dependency", () => {
+    const ins = insightsFor(
+      [node("c", "client"), node("api", "service"), node("db", "sql_db", { down: true })],
+      [edge("c", "api"), edge("api", "db")],
+      500,
+    );
+    expect(ins.some((i) => i.id === "nobreaker-api->db")).toBe(true);
+  });
 });
