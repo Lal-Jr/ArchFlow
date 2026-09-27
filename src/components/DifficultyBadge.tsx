@@ -1,14 +1,20 @@
 import type { Difficulty } from "@/lib/problems";
 
-const STYLES: Record<Difficulty, string> = {
-  Easy: "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
-  Medium: "bg-amber-500/10 text-amber-400 ring-amber-500/20",
-  Hard: "bg-rose-500/10 text-rose-400 ring-rose-500/20",
-};
+const DOTS: Record<Difficulty, number> = { Easy: 1, Medium: 2, Hard: 3 };
 
-export function DifficultyBadge({ difficulty }: { difficulty: Difficulty }) {
+export function DifficultyBadge({ difficulty, invert }: { difficulty: Difficulty; invert?: boolean }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${STYLES[difficulty]}`}>
+    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${invert ? "text-white/70" : "text-ink-2"}`}>
+      <span className="flex gap-0.5" aria-hidden>
+        {[1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className={`h-1.5 w-3 rounded-full ${
+              i <= DOTS[difficulty] ? (invert ? "bg-white" : "bg-ink") : invert ? "bg-white/25" : "bg-line-2"
+            }`}
+          />
+        ))}
+      </span>
       {difficulty}
     </span>
   );

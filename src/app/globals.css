@@ -1,16 +1,76 @@
 @import "tailwindcss";
 
+/*
+ * Monochrome, high-contrast system: black ink on white, one gray canvas,
+ * and color reserved for meaning (healthy / hot / failing / selected).
+ */
 @theme inline {
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter-tight);
   --font-mono: var(--font-geist-mono);
+
+  --color-ink: #000000;
+  --color-ink-2: #4b4b4b;
+  --color-ink-3: #757575;
+  --color-ink-4: #a6a6a6;
+  --color-line: #e8e8e8;
+  --color-line-2: #d4d4d4;
+  --color-wash: #f6f6f6;
+  --color-canvas: #eeeeee;
+
+  --color-good: #05944f;
+  --color-good-wash: #e6f4ed;
+  --color-warn: #ffc043;
+  --color-warn-ink: #8a5a00;
+  --color-warn-wash: #fff5dd;
+  --color-bad: #e11900;
+  --color-bad-wash: #fdebe8;
+  --color-accent: #276ef1;
+}
+
+:root {
+  /* The design is deliberately light; stop browsers from auto-darkening it. */
+  color-scheme: only light;
 }
 
 body {
-  background: #09090b;
-  color: #f4f4f5;
+  background: #ffffff;
+  color: #000000;
 }
 
+::selection {
+  background: #000;
+  color: #fff;
+}
+
+/* React Flow chrome */
+.react-flow__controls {
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12) !important;
+  border-radius: 8px;
+  overflow: hidden;
+}
 .react-flow__controls-button {
-  background: #18181b !important;
-  border-color: #27272a !important;
+  background: #fff !important;
+  border-bottom: 1px solid #e8e8e8 !important;
+  width: 32px !important;
+  height: 32px !important;
+}
+.react-flow__controls-button:hover {
+  background: #f6f6f6 !important;
+}
+.react-flow__minimap {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+}
+.react-flow__edge.selected .af-edge-path {
+  stroke: #276ef1 !important;
+}
+
+input[type="range"] {
+  accent-color: #000;
+}
+
+/* Reveal every connection dot while dragging a new edge. */
+.af-connecting .react-flow__handle {
+  opacity: 1 !important;
 }
