@@ -148,6 +148,7 @@ export function Sandbox() {
           </NavLink>
           <NavLink href="/challenges">Challenges</NavLink>
           <NavLink href="/#problems">Practice</NavLink>
+          <NavLink href="/guide">Guide</NavLink>
           <NavLink href="/learn">Glossary</NavLink>
         </nav>
       </TopBar>

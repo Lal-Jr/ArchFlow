@@ -15,6 +15,7 @@ export default function LearnPage() {
           <NavLink href="/sandbox">Simulator</NavLink>
           <NavLink href="/challenges">Challenges</NavLink>
           <NavLink href="/#problems">Practice</NavLink>
+          <NavLink href="/guide">Guide</NavLink>
           <NavLink href="/learn" active>
             Glossary
           </NavLink>
