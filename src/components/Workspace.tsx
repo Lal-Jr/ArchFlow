@@ -94,6 +94,15 @@ function Practice({ problem }: { problem: Problem }) {
     <Editor
       key={version}
       storageKey={problem.slug}
+      reviewContext={{
+        kind: "problem",
+        title: `${problem.title}: ${problem.tagline}`,
+        details: [
+          ...problem.functional.map((f) => `Functional: ${f}`),
+          ...problem.nonFunctional.map((f) => `Non-functional: ${f}`),
+          ...problem.estimates.map((f) => `Estimate: ${f}`),
+        ].slice(0, 20),
+      }}
       tabs={(g) => [
         { id: "brief", label: "Brief", content: <Brief problem={problem} /> },
         {

@@ -21,6 +21,11 @@ function rateLimited(ip: string) {
   return hits.length > MAX_PER_WINDOW;
 }
 
+/** Lets the UI hide the review entirely on deployments without a key. */
+export async function GET() {
+  return Response.json({ enabled: !!process.env.ANTHROPIC_API_KEY });
+}
+
 const error = (status: number, code: string, message: string) => Response.json({ error: code, message }, { status });
 
 export async function POST(request: Request) {
