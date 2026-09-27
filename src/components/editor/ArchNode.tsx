@@ -1,7 +1,7 @@
 "use client";
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { Flame, OctagonX, TriangleAlert } from "lucide-react";
+import { ArrowUpRight, Flame, OctagonX, TriangleAlert } from "lucide-react";
 import { CATALOG_BY_TYPE } from "@/lib/catalog";
 import type { ArchNodeType } from "@/lib/graph";
 import { resolveConfig, ROLE } from "@/lib/sim/config";
@@ -12,7 +12,8 @@ import { useSnapshot } from "./useSimulation";
 
 const SIDES = [Position.Top, Position.Right, Position.Bottom, Position.Left];
 
-const BADGE: Partial<Record<NodeStatus, { label: string; cls: string; Icon: typeof Flame }>> = {
+const BADGE: Partial<Record<NodeStatus | "scaling", { label: string; cls: string; Icon: typeof Flame }>> = {
+  scaling: { label: "Scaling", cls: "bg-accent text-white", Icon: ArrowUpRight },
   hot: { label: "Hot", cls: "bg-warn text-ink", Icon: Flame },
   overloaded: { label: "Overloaded", cls: "bg-bad text-white", Icon: TriangleAlert },
   down: { label: "Down", cls: "bg-ink text-white", Icon: OctagonX },
@@ -32,7 +33,14 @@ export function ArchNode({ id, data, selected }: NodeProps<ArchNodeType>) {
   const cfg = resolveConfig(data.kind, data.config);
   const role = ROLE[data.kind];
   const info = CATALOG_BY_TYPE[data.kind];
-  const badge = m ? BADGE[m.status] : cfg.down ? BADGE.down : undefined;
+  const badge =
+    m && m.pendingReplicas > m.replicas && m.status !== "down"
+      ? BADGE.scaling
+      : m
+        ? BADGE[m.status]
+        : cfg.down
+          ? BADGE.down
+          : undefined;
   const down = cfg.down && role !== "source";
   const current = data.emphasis === "current";
 
@@ -41,7 +49,13 @@ export function ArchNode({ id, data, selected }: NodeProps<ArchNodeType>) {
       ? data.kind === "scheduler"
         ? `${fmtRps(cfg.sourceRps)} jobs/s`
         : "Traffic source"
-      : `${cfg.replicas} × ${fmtRps(cfg.capacity)}/s`;
+      : `${m?.replicas ?? cfg.replicas} × ${fmtRps(cfg.capacity)}/s`;
+  const scaling = m && m.pendingReplicas > m.replicas;
+  const tags = [
+    cfg.autoscale && `Auto ${cfg.replicas}–${Math.max(cfg.maxReplicas, cfg.replicas)}`,
+    cfg.retries > 0 && `Retry ×${cfg.retries}`,
+    cfg.circuitBreaker && "Breaker",
+  ].filter(Boolean) as string[];
 
   return (
     <div
@@ -78,9 +92,19 @@ export function ArchNode({ id, data, selected }: NodeProps<ArchNodeType>) {
           </div>
           <div className="truncate text-[11px] leading-tight text-ink-3">
             {info.label} · {spec}
+            {scaling && <span className="font-semibold text-ink"> → {m.pendingReplicas}</span>}
           </div>
         </div>
       </div>
+      {tags.length > 0 && (
+        <div className="-mt-1 flex flex-wrap gap-1 px-3 pb-2">
+          {tags.map((t) => (
+            <span key={t} className="rounded bg-wash px-1.5 py-0.5 text-[10px] font-medium text-ink-2">
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
 
       {m && role !== "source" && m.status !== "idle" && (
         <div className="border-t border-line px-3 py-2">

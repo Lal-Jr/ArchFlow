@@ -42,7 +42,8 @@ export function useSimulation(nodes: ArchNodeType[], edges: FlowEdgeType[]) {
       last = now;
       const st = stateRef.current;
       let snap: Snapshot | null = null;
-      for (; owed >= 1; owed--) snap = tick(g, st, TICK_S, offeredRps(p, base, st.t));
+      // Tail latency is the costly part, so only the tick that gets displayed computes it.
+      for (; owed >= 1; owed--) snap = tick(g, st, TICK_S, offeredRps(p, base, st.t), { tail: owed < 2 });
       if (snap) store.set(snap);
     }, TICK_S * 1000);
     return () => clearInterval(id);

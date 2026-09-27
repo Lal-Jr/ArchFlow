@@ -3,9 +3,17 @@
 import { ArrowLeftRight, Minus, Plus, Trash2, X } from "lucide-react";
 import { CATALOG_BY_TYPE } from "@/lib/catalog";
 import type { ArchNodeData, ArchNodeType, FlowEdgeType } from "@/lib/graph";
-import { resolveConfig, ROLE, ROLE_BEHAVIOR, type NodeConfig } from "@/lib/sim/config";
-import { autoRatio } from "@/lib/sim/engine";
-import { fmtMs, fmtPct, fmtRps } from "@/lib/sim/format";
+import {
+  CALLER_ROLES,
+  COST_PER_REPLICA,
+  resolveConfig,
+  ROLE,
+  ROLE_BEHAVIOR,
+  SCALABLE_ROLES,
+  type NodeConfig,
+} from "@/lib/sim/config";
+import { AUTOSCALE_TARGET, autoRatio, BREAKER_COOLDOWN_S, PROVISION_DELAY_S } from "@/lib/sim/engine";
+import { fmtMs, fmtPct, fmtRps, fmtUsd } from "@/lib/sim/format";
 import { ComponentIcon } from "../ComponentIcon";
 import { useSnapshot } from "./useSimulation";
 
@@ -38,30 +46,58 @@ function NumberInput({ value, onChange, min = 0, step = 1 }: { value: number; on
   );
 }
 
-function Stepper({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+function Stepper({
+  value,
+  onChange,
+  min = 1,
+  max = 100,
+  noun = "replica",
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  min?: number;
+  max?: number;
+  noun?: string;
+}) {
   return (
     <div className="flex items-center rounded-lg bg-wash">
-      <button onClick={() => onChange(Math.max(1, value - 1))} className="p-2.5 hover:text-ink-2" aria-label="Remove replica">
+      <button onClick={() => onChange(Math.max(min, value - 1))} className="p-2.5 hover:text-ink-2" aria-label={`Remove ${noun}`}>
         <Minus size={14} />
       </button>
       <span className="flex-1 text-center text-sm font-semibold tabular-nums">{value}</span>
-      <button onClick={() => onChange(Math.min(100, value + 1))} className="p-2.5 hover:text-ink-2" aria-label="Add replica">
+      <button onClick={() => onChange(Math.min(max, value + 1))} className="p-2.5 hover:text-ink-2" aria-label={`Add ${noun}`}>
         <Plus size={14} />
       </button>
     </div>
   );
 }
 
-function Toggle({ on, onChange, label }: { on: boolean; onChange: (b: boolean) => void; label: string }) {
+function Toggle({
+  on,
+  onChange,
+  label,
+  hint,
+  danger,
+}: {
+  on: boolean;
+  onChange: (b: boolean) => void;
+  label: string;
+  hint?: string;
+  danger?: boolean;
+}) {
   return (
     <button
       role="switch"
       aria-checked={on}
+      aria-label={label}
       onClick={() => onChange(!on)}
-      className="flex w-full items-center justify-between rounded-lg bg-wash px-3 py-2.5 text-sm"
+      className="flex w-full items-center justify-between gap-3 rounded-lg bg-wash px-3 py-2.5 text-left text-sm"
     >
-      <span className="font-medium">{label}</span>
-      <span className={`relative h-5 w-9 rounded-full transition-colors ${on ? "bg-bad" : "bg-line-2"}`}>
+      <span>
+        <span className="block font-medium">{label}</span>
+        {hint && <span className="block text-[11px] leading-snug text-ink-3">{hint}</span>}
+      </span>
+      <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${on ? (danger ? "bg-bad" : "bg-ink") : "bg-line-2"}`}>
         <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
       </span>
     </button>
@@ -85,11 +121,14 @@ function Header({ title, onClose, onDelete, icon }: { title: string; onClose: ()
 
 export function NodeInspector({
   node,
+  hasSyncDeps,
   onChange,
   onDelete,
   onClose,
 }: {
   node: ArchNodeType;
+  /** Whether this node calls anything synchronously — retries and breakers only matter then. */
+  hasSyncDeps: boolean;
   onChange: (data: Partial<ArchNodeData>) => void;
   onDelete: () => void;
   onClose: () => void;
@@ -101,6 +140,7 @@ export function NodeInspector({
   const role = ROLE[kind];
   const cfg = resolveConfig(kind, node.data.config);
   const set = (patch: Partial<NodeConfig>) => onChange({ config: { ...node.data.config, ...patch } });
+  const live = m?.replicas ?? cfg.replicas;
 
   return (
     <div>
@@ -146,7 +186,7 @@ export function NodeInspector({
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider">Capacity</h3>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Replicas">
+              <Field label={cfg.autoscale ? "Min replicas" : "Replicas"}>
                 <Stepper value={cfg.replicas} onChange={(replicas) => set({ replicas })} />
               </Field>
               <Field label="Each handles" hint="rps">
@@ -156,9 +196,52 @@ export function NodeInspector({
             <Field label="Base latency" hint="ms">
               <NumberInput value={cfg.latencyMs} onChange={(latencyMs) => set({ latencyMs })} step={1} />
             </Field>
-            <p className="text-xs text-ink-3">
-              Total capacity <span className="font-semibold text-ink">{fmtRps(cfg.replicas * cfg.capacity)}/s</span>
+            <p className="flex justify-between text-xs text-ink-3">
+              <span>
+                Total capacity <span className="font-semibold text-ink">{fmtRps(live * cfg.capacity)}/s</span>
+                {live !== cfg.replicas && ` (${live} replicas now)`}
+              </span>
+              <span>
+                <span className="font-semibold text-ink">{fmtUsd(COST_PER_REPLICA[kind] * live)}</span>/mo
+              </span>
             </p>
+          </div>
+        )}
+
+        {SCALABLE_ROLES.includes(role) && (
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider">Autoscaling</h3>
+            <Toggle
+              label="Autoscale"
+              hint={`Targets ${AUTOSCALE_TARGET * 100}% load. New replicas take ${PROVISION_DELAY_S}s to start.`}
+              on={cfg.autoscale}
+              onChange={(autoscale) => set({ autoscale })}
+            />
+            {cfg.autoscale && (
+              <Field label="Max replicas">
+                <Stepper
+                  value={Math.max(cfg.maxReplicas, cfg.replicas)}
+                  min={cfg.replicas}
+                  noun="max replica"
+                  onChange={(maxReplicas) => set({ maxReplicas })}
+                />
+              </Field>
+            )}
+          </div>
+        )}
+
+        {CALLER_ROLES.includes(role) && hasSyncDeps && (
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider">Resilience</h3>
+            <Field label="Retries on failure" hint={cfg.retries ? `up to ${cfg.retries + 1} attempts` : "off"}>
+              <Stepper value={cfg.retries} min={0} max={5} noun="retry" onChange={(retries) => set({ retries })} />
+            </Field>
+            <Toggle
+              label="Circuit breaker"
+              hint={`Stops calling a dependency that fails over half its requests, for ${BREAKER_COOLDOWN_S}s.`}
+              on={cfg.circuitBreaker}
+              onChange={(circuitBreaker) => set({ circuitBreaker })}
+            />
           </div>
         )}
 
@@ -189,7 +272,7 @@ export function NodeInspector({
         {role !== "source" && (
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider">Chaos</h3>
-            <Toggle label="Kill this node" on={cfg.down} onChange={(down) => set({ down })} />
+            <Toggle label="Kill this node" danger on={cfg.down} onChange={(down) => set({ down })} />
             <Field label="Inject latency" hint={`+${cfg.extraLatencyMs}ms`}>
               <input
                 type="range"

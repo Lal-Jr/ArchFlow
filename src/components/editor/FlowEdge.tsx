@@ -29,8 +29,10 @@ export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
 
   const m = snap?.edges[id];
   const ignored = snap?.ignoredEdges.includes(id);
-  const flowing = !!m && m.rps > 0.05;
-  const color = flowing ? STROKE[m.status] : data?.highlight ? "#000000" : "#8f8f8f";
+  const open = !!m?.breakerOpen;
+  const retrying = !!m && m.retryFactor > 1.05;
+  const flowing = !!m && m.rps > 0.05 && !m.breakerOpen;
+  const color = flowing ? STROKE[m.status] : m?.breakerOpen ? "#e11900" : data?.highlight ? "#000000" : "#8f8f8f";
   const width = flowing ? Math.min(5, 1.5 + Math.log10(m.rps + 1) * 0.8) : data?.highlight ? 2.5 : 1.5;
   // More traffic → more dots, capped so busy edges stay legible.
   const dots = flowing ? Math.min(6, Math.max(1, Math.ceil(Math.log10(m.rps + 1) * 1.6))) : 0;
@@ -46,7 +48,7 @@ export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
         style={{
           stroke: selected ? "#276ef1" : color,
           strokeWidth: width,
-          strokeDasharray: ignored || m?.status === "down" ? "6 5" : undefined,
+          strokeDasharray: ignored || open || m?.status === "down" ? "6 5" : undefined,
           transition: "stroke 300ms, stroke-width 300ms",
         }}
       />
@@ -55,15 +57,25 @@ export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
           <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={path} begin={`${(i * dur) / dots}s`} />
         </circle>
       ))}
-      {(flowing || data?.label) && (
+      {(flowing || open || data?.label) && (
         <EdgeLabelRenderer>
           <div
             className={`nodrag nopan pointer-events-none absolute rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums ${
-              flowing ? "bg-ink text-white" : "border border-line-2 bg-white text-ink-2"
+              open
+                ? "border-2 border-bad bg-white text-bad"
+                : retrying
+                  ? "bg-bad text-white"
+                  : flowing
+                    ? "bg-ink text-white"
+                    : "border border-line-2 bg-white text-ink-2"
             }`}
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
           >
-            {flowing ? `${fmtRps(m.rps)}/s` : data?.label}
+            {open
+              ? "Circuit open"
+              : flowing
+                ? `${fmtRps(m.rps)}/s${retrying ? ` · ${m.retryFactor.toFixed(1)}× retries` : ""}`
+                : data?.label}
           </div>
         </EdgeLabelRenderer>
       )}

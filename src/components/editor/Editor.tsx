@@ -217,6 +217,9 @@ function EditorInner({ storageKey, initial, tabs, footer }: EditorProps) {
             <NodeInspector
               key={selectedNode.id}
               node={selectedNode}
+              hasSyncDeps={edges.some(
+                (e) => e.source === selectedNode.id && !["queue", "stream"].includes(nodes.find((n) => n.id === e.target)?.data.kind ?? ""),
+              )}
               onChange={(d) => updateNode(selectedNode.id, d)}
               onDelete={() => deleteNode(selectedNode.id)}
               onClose={clearSelection}

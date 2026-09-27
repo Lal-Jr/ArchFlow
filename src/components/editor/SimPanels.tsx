@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, CircleCheck, Info, OctagonAlert, Pause, Play, RotateCcw, TriangleAlert } from "lucide-react";
 import type { Compiled } from "@/lib/sim/engine";
-import { fmtMs, fmtPct, fmtRps } from "@/lib/sim/format";
+import { monthlyCost } from "@/lib/sim/config";
+import { fmtMs, fmtPct, fmtRps, fmtUsd } from "@/lib/sim/format";
 import { deriveInsights, type Severity } from "@/lib/sim/insights";
 import { PATTERNS, offeredRps } from "@/lib/sim/traffic";
 import { LineChart, type Series } from "./LineChart";
@@ -99,10 +100,13 @@ const KPIS: { key: string; label: string; unit: (n: number) => string; series: S
   },
   {
     key: "latency",
-    label: "Avg latency",
+    label: "Latency",
     unit: fmtMs,
     caption: "End to end, from the client",
-    series: [{ key: "lat", label: "Latency", value: (p) => p.latencyMs, color: INK }],
+    series: [
+      { key: "avg", label: "Avg", value: (p) => p.latencyMs, color: INK },
+      { key: "p99", label: "p99", value: (p) => p.p99Ms, color: "#a6a6a6", dashed: true },
+    ],
   },
   {
     key: "errors",
@@ -165,7 +169,14 @@ export function SimSheet() {
                     </span>
                   )}
                 </div>
-                <div className={`text-2xl font-semibold tracking-tight ${bad ? "text-bad" : ""}`}>{k.unit(v)}</div>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-2xl font-semibold tracking-tight ${bad ? "text-bad" : ""}`}>{k.unit(v)}</span>
+                  {k.key === "latency" && (
+                    <span className="text-xs text-ink-3" title="Estimated 99th percentile: 1 in 100 requests is slower than this">
+                      p99 <span className="font-semibold text-ink">{fmtMs(snap.p99Ms)}</span>
+                    </span>
+                  )}
+                </div>
                 {open && (
                   <>
                     <div className="mb-1 h-4 truncate text-[10px] text-ink-4">{k.caption}</div>
@@ -193,8 +204,19 @@ const SEV: Record<Severity, { Icon: typeof Info; cls: string; label: string }> =
 export function InsightsPanel({ compiled, onFocus }: { compiled: Compiled; onFocus: (id: string) => void }) {
   const snap = useSnapshot();
   const insights = snap ? deriveInsights(compiled, snap) : [];
+  const cost = monthlyCost(
+    [...compiled.nodes.values()],
+    snap ? Object.fromEntries(Object.entries(snap.nodes).map(([id, m]) => [id, m.replicas])) : undefined,
+  );
   return (
     <div className="p-5">
+      <div className="mb-4 flex items-center justify-between rounded-xl bg-wash px-4 py-3">
+        <span className="text-xs text-ink-3">Estimated cost</span>
+        <span className="text-sm">
+          <span className="font-bold tabular-nums">{fmtUsd(cost)}</span>
+          <span className="text-ink-3">/month</span>
+        </span>
+      </div>
       <h2 className="text-lg font-bold tracking-tight">Live insights</h2>
       <p className="mb-4 text-sm text-ink-3">
         {snap ? "What the simulator sees right now." : "Run traffic to see bottlenecks, backlogs and failures as they happen."}
