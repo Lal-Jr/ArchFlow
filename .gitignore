@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# next dev regenerates these when it detects an AI coding agent; keep them out of the repo
+/AGENTS.md
+/CLAUDE.md
