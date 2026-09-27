@@ -38,6 +38,17 @@ describe("traffic flow", () => {
     expect(s.nodes.b.inRps).toBeCloseTo(600);
   });
 
+  it("shards across stores when a router has nothing but stores behind it", () => {
+    const s = simulate(
+      [node("c", "client"), node("ring", "load_balancer"), node("a", "cache"), node("b", "cache"), node("db", "sql_db")],
+      [edge("c", "ring"), edge("ring", "a"), edge("ring", "b"), edge("a", "db"), edge("b", "db")],
+      1000,
+    );
+    expect(s.nodes.a.inRps).toBeCloseTo(500);
+    expect(s.nodes.b.inRps).toBeCloseTo(500);
+    expect(s.nodes.db.inRps).toBeCloseTo(200); // both shards' 20% misses
+  });
+
   it("treats stores beside a router as per-request side-calls", () => {
     const s = simulate(
       [node("c", "client"), node("rl", "rate_limiter", { rateLimit: 10_000 }), node("redis", "cache"), node("api", "service")],

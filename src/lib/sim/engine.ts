@@ -125,12 +125,15 @@ function linkFractions(node: SimNode, targets: { edge: SimEdge; to: SimNode }[])
   if (role === "route" || role === "limiter") {
     // Stores and caches beside a router are consulted per request (e.g. rate-limit counters);
     // everything else is a route target, weighted by the edge ratio, skipping dead nodes.
-    const routes = targets.filter((t) => !isStore(t.to));
+    // A router whose targets are all stores is sharding: each request goes to one of them.
+    const sharding = targets.every((t) => isStore(t.to));
+    const side = (t: (typeof targets)[number]) => !sharding && isStore(t.to);
+    const routes = targets.filter((t) => !side(t));
     const healthy = routes.filter((t) => !t.to.config.down);
     const pool = healthy.length ? healthy : routes;
     const total = pool.reduce((a, t) => a + (t.edge.ratio ?? 1), 0);
     return targets.map((t) =>
-      isStore(t.to)
+      side(t)
         ? { frac: t.edge.ratio ?? 1, mode: "call" }
         : { frac: pool.includes(t) && total > 0 ? (t.edge.ratio ?? 1) / total : 0, mode: "alt" },
     );
