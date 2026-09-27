@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, CircleCheck, Info, OctagonAlert, Pause, Play, RotateCcw, Sparkles, TriangleAlert } from "lucide-react";
 import type { Compiled } from "@/lib/sim/engine";
 import { monthlyCost } from "@/lib/sim/config";
@@ -22,6 +22,8 @@ export function SimBar({ sim }: { sim: Simulation }) {
   return (
     <div className="absolute left-1/2 top-4 z-20 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 whitespace-nowrap rounded-[26px] bg-white p-1.5 shadow-[0_4px_16px_rgb(0_0_0/0.14)]">
       <button
+        data-tour="run"
+        title="Run / pause (Space)"
         onClick={sim.toggle}
         className="flex h-9 items-center gap-2 whitespace-nowrap rounded-full bg-ink pl-3.5 pr-4 text-sm font-semibold text-white hover:bg-ink-2"
       >
@@ -150,7 +152,7 @@ export function SimSheet() {
     : {};
 
   return (
-    <div className="absolute inset-x-4 bottom-4 z-20 rounded-2xl bg-white shadow-[0_-2px_24px_rgb(0_0_0/0.12)]">
+    <div data-tour="metrics" className="absolute inset-x-4 bottom-4 z-20 rounded-2xl bg-white shadow-[0_-2px_24px_rgb(0_0_0/0.12)]">
       <button
         onClick={() => setOpen((o) => !o)}
         className="absolute -top-3 left-1/2 flex h-6 w-12 -translate-x-1/2 items-center justify-center rounded-full bg-white text-ink-3 shadow hover:text-ink"
@@ -210,6 +212,24 @@ export function SimSheet() {
 
 /* ----------------------------------- Insights ----------------------------------- */
 
+// Asked once per page load: is AI review configured on this server?
+let reviewEnabledPromise: Promise<boolean> | null = null;
+function useReviewEnabled() {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    reviewEnabledPromise ??= fetch("/api/review")
+      .then((r) => (r.ok ? r.json() : { enabled: false }))
+      .then((d: { enabled?: boolean }) => !!d.enabled)
+      .catch(() => false);
+    let live = true;
+    reviewEnabledPromise.then((v) => live && setEnabled(v));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return enabled;
+}
+
 const SEV: Record<Severity, { Icon: typeof Info; cls: string; label: string }> = {
   critical: { Icon: OctagonAlert, cls: "text-bad", label: "Critical" },
   warning: { Icon: TriangleAlert, cls: "text-warn-ink", label: "Warning" },
@@ -227,6 +247,7 @@ export function InsightsPanel({
   onReview: () => void;
 }) {
   const snap = useSnapshot();
+  const reviewEnabled = useReviewEnabled();
   const insights = snap ? deriveInsights(compiled, snap) : [];
   const cost = monthlyCost(
     [...compiled.nodes.values()],
@@ -241,18 +262,20 @@ export function InsightsPanel({
           <span className="text-ink-3">/month</span>
         </span>
       </div>
-      <button
-        onClick={onReview}
-        className="mb-5 flex w-full items-center gap-3 rounded-xl border border-line p-3 text-left hover:border-ink"
-      >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink text-white">
-          <Sparkles size={15} />
-        </span>
-        <span>
-          <span className="block font-semibold">AI design review</span>
-          <span className="block text-xs text-ink-3">Get interviewer-style feedback from Claude</span>
-        </span>
-      </button>
+      {reviewEnabled && (
+        <button
+          onClick={onReview}
+          className="mb-5 flex w-full items-center gap-3 rounded-xl border border-line p-3 text-left hover:border-ink"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink text-white">
+            <Sparkles size={15} />
+          </span>
+          <span>
+            <span className="block font-semibold">AI design review</span>
+            <span className="block text-xs text-ink-3">Get interviewer-style feedback from Claude</span>
+          </span>
+        </button>
+      )}
       <h2 className="text-lg font-bold tracking-tight">Live insights</h2>
       <p className="mb-4 text-sm text-ink-3">
         {snap ? "What the simulator sees right now." : "Run traffic to see bottlenecks, backlogs and failures as they happen."}

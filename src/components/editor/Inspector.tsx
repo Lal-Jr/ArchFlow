@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, Minus, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeftRight, CircleHelp, Minus, Plus, Trash2, X } from "lucide-react";
 import { CATALOG_BY_TYPE } from "@/lib/catalog";
 import type { ArchNodeData, ArchNodeType, FlowEdgeType } from "@/lib/graph";
 import {
@@ -17,11 +17,18 @@ import { fmtMs, fmtPct, fmtRps, fmtUsd } from "@/lib/sim/format";
 import { ComponentIcon } from "../ComponentIcon";
 import { useSnapshot } from "./useSimulation";
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, help, children }: { label: string; hint?: string; help?: string; children: React.ReactNode }) {
   return (
     <label className="block">
       <div className="mb-1 flex items-baseline justify-between">
-        <span className="text-xs font-medium text-ink-2">{label}</span>
+        <span className="flex items-center gap-1 text-xs font-medium text-ink-2">
+          {label}
+          {help && (
+            <span title={help} aria-label={help} className="cursor-help text-ink-4 hover:text-ink">
+              <CircleHelp size={12} />
+            </span>
+          )}
+        </span>
         {hint && <span className="text-[11px] text-ink-3">{hint}</span>}
       </div>
       {children}
@@ -208,14 +215,17 @@ export function NodeInspector({
               {locked && <span className="font-medium normal-case tracking-normal text-ink-3">Per-replica specs are fixed in challenges</span>}
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              <Field label={cfg.autoscale ? "Min replicas" : "Replicas"}>
+              <Field
+                label={cfg.autoscale ? "Min replicas" : "Replicas"}
+                help="Identical copies of this component sharing the load. More replicas means more capacity, and no single point of failure."
+              >
                 <Stepper value={cfg.replicas} onChange={(replicas) => set({ replicas })} />
               </Field>
-              <Field label="Each handles" hint="rps">
+              <Field label="Each handles" hint="rps" help="Requests per second one replica can process. Beyond this, requests queue and eventually time out.">
                 <NumberInput value={cfg.capacity} onChange={(capacity) => set({ capacity })} step={100} disabled={locked} />
               </Field>
             </div>
-            <Field label="Base latency" hint="ms">
+            <Field label="Base latency" hint="ms" help="How long one request takes when the component is idle. It grows as utilization climbs.">
               <NumberInput value={cfg.latencyMs} onChange={(latencyMs) => set({ latencyMs })} step={1} disabled={locked} />
             </Field>
             <p className="flex justify-between text-xs text-ink-3">
@@ -255,7 +265,11 @@ export function NodeInspector({
         {CALLER_ROLES.includes(role) && hasSyncDeps && (
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider">Resilience</h3>
-            <Field label="Retries on failure" hint={cfg.retries ? `up to ${cfg.retries + 1} attempts` : "off"}>
+            <Field
+              label="Retries on failure"
+              hint={cfg.retries ? `up to ${cfg.retries + 1} attempts` : "off"}
+              help="Retry failed calls to dependencies. It helps with blips, but multiplies load on a dependency that is already struggling."
+            >
               <Stepper value={cfg.retries} min={0} max={5} noun="retry" onChange={(retries) => set({ retries })} />
             </Field>
             <Toggle
@@ -268,7 +282,7 @@ export function NodeInspector({
         )}
 
         {(kind === "cache" || kind === "cdn") && (
-          <Field label="Hit rate" hint={fmtPct(cfg.hitRate * 100)}>
+          <Field label="Hit rate" hint={fmtPct(cfg.hitRate * 100)} help="Share of requests answered from the cache. Only the misses reach whatever sits behind it.">
             <input
               type="range"
               min={0}

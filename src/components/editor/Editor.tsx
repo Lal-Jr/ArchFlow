@@ -1,12 +1,13 @@
 "use client";
 
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addEdge,
   Background,
   BackgroundVariant,
   ConnectionMode,
+  ControlButton,
   Controls,
   MarkerType,
   ReactFlow,
@@ -28,6 +29,20 @@ import { SimContext, useSimulation, type Simulation } from "./useSimulation";
 import type { Challenge } from "@/lib/challenges";
 import type { ReviewRequest } from "@/lib/review";
 import { ReviewPanel } from "./ReviewPanel";
+import { Keyboard, LayoutGrid, Redo2, Undo2 } from "lucide-react";
+import { tidyLayout } from "@/lib/layout";
+import { MOD, ShortcutsDialog } from "./ShortcutsDialog";
+import { EDITOR_TOUR, Tour } from "./Tour";
+import { useHistory } from "./useHistory";
+
+const TOUR_KEY = "archflow:tour-done";
+const tourSeen = () => {
+  try {
+    return localStorage.getItem(TOUR_KEY) === "1";
+  } catch {
+    return true;
+  }
+};
 
 export interface Graph {
   nodes: ArchNodeType[];
@@ -78,6 +93,26 @@ function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge,
   const [reviewing, setReviewing] = useState(false);
   const { screenToFlowPosition, fitView } = useReactFlow();
   const sim = useSimulation(nodes, edges, challenge);
+  const [showTour, setShowTour] = useState(() => !tourSeen());
+  const [showKeys, setShowKeys] = useState(false);
+  const endTour = useCallback(() => {
+    setShowTour(false);
+    try {
+      localStorage.setItem(TOUR_KEY, "1");
+    } catch {}
+  }, []);
+
+  const history = useHistory(
+    nodes,
+    edges,
+    useCallback(
+      (f: Graph) => {
+        setNodes(f.nodes);
+        setEdges(f.edges.map((e) => ({ ...e, ...defaultEdgeOptions })));
+      },
+      [setNodes, setEdges],
+    ),
+  );
 
   useEffect(() => {
     saveDesign(storageKey, { nodes, edges });
@@ -148,6 +183,71 @@ function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge,
     setEdges((es) => es.filter((e) => e.source !== id && e.target !== id));
   };
 
+  /** Copies the selected components (and the connections between them), offset so they're visible. */
+  const duplicate = () => {
+    const picked = nodes.filter((n) => n.selected);
+    if (!picked.length) return;
+    const stamp = Date.now().toString(36);
+    const ids = new Map(picked.map((n, i) => [n.id, `${n.id}-copy-${stamp}${i}`]));
+    const copies = picked.map((n) => ({
+      ...n,
+      id: ids.get(n.id)!,
+      position: { x: n.position.x + 40, y: n.position.y + 40 },
+      selected: true,
+      data: { ...n.data, label: `${n.data.label} copy`, config: n.data.config ? { ...n.data.config } : undefined },
+    }));
+    const links = edges
+      .filter((e) => ids.has(e.source) && ids.has(e.target))
+      .map((e) => ({ ...e, id: `${e.id}-copy-${stamp}`, source: ids.get(e.source)!, target: ids.get(e.target)!, selected: false }));
+    setNodes((ns) => [...ns.map((n) => ({ ...n, selected: false })), ...copies]);
+    setEdges((es) => [...es, ...links]);
+  };
+
+  const tidy = () => {
+    const pos = tidyLayout(sim.compiled, Object.fromEntries(nodes.map((n) => [n.id, n.position.y])));
+    setNodes((ns) => ns.map((n) => (pos[n.id] ? { ...n, position: pos[n.id] } : n)));
+    setTimeout(() => fitView({ duration: 400, maxZoom: 1, padding: { top: 0.2, bottom: 0.55, left: 0.1, right: 0.1 } }), 30);
+  };
+
+  // Keyboard shortcuts — ignored while typing in a field or when a dialog is open.
+  const keys = { undo: history.undo, redo: history.redo, duplicate, tidy, toggle: sim.toggle, reset: sim.reset, clearSelection, fitView };
+  const keysRef = useRef(keys);
+  useEffect(() => {
+    keysRef.current = keys;
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      const k = keysRef.current;
+      const mod = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+      if (mod && key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) k.redo();
+        else k.undo();
+      } else if (mod && key === "y") {
+        e.preventDefault();
+        k.redo();
+      } else if (mod && key === "d") {
+        e.preventDefault();
+        k.duplicate();
+      } else if (mod || e.altKey) {
+        return;
+      } else if (e.key === " ") {
+        e.preventDefault();
+        k.toggle();
+      } else if (key === "r") k.reset();
+      else if (key === "f") k.fitView({ duration: 400, maxZoom: 1, padding: { top: 0.2, bottom: 0.55, left: 0.1, right: 0.1 } });
+      else if (key === "l") k.tidy();
+      else if (e.key === "?") setShowKeys(true);
+      else if (e.key === "Escape") k.clearSelection();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const graph = { nodes, edges };
   const allTabs: Tab[] = [
     { id: "components", label: "Components", content: <Palette onAdd={addAtCenter} /> },
@@ -158,7 +258,7 @@ function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge,
   return (
     <SimContext.Provider value={sim.store}>
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-[288px] shrink-0 flex-col border-r border-line bg-white">
+        <aside data-tour="palette" className="flex w-[288px] shrink-0 flex-col border-r border-line bg-white">
           {allTabs.length > 1 && (
             <div className="p-3 pb-0">
               <div className="flex rounded-full bg-wash p-1">
@@ -181,6 +281,7 @@ function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge,
         </aside>
 
         <div
+          data-tour="canvas"
           className={`relative min-w-0 flex-1 bg-canvas ${connecting ? "af-connecting" : ""}`}
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
@@ -204,7 +305,20 @@ function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge,
             proOptions={{ hideAttribution: true }}
           >
             <Background variant={BackgroundVariant.Lines} gap={48} color="#e4e4e4" />
-            <Controls position="top-left" showInteractive={false} style={{ top: 64 }} />
+            <Controls position="top-left" showInteractive={false} style={{ top: 64 }}>
+              <ControlButton onClick={history.undo} disabled={!history.canUndo} title={`Undo (${MOD}Z)`} aria-label="Undo">
+                <Undo2 size={14} />
+              </ControlButton>
+              <ControlButton onClick={history.redo} disabled={!history.canRedo} title={`Redo (${MOD}⇧Z)`} aria-label="Redo">
+                <Redo2 size={14} />
+              </ControlButton>
+              <ControlButton onClick={tidy} disabled={nodes.length < 2} title="Tidy up the layout (L)" aria-label="Tidy up the layout">
+                <LayoutGrid size={14} />
+              </ControlButton>
+              <ControlButton onClick={() => setShowKeys(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+                <Keyboard size={14} />
+              </ControlButton>
+            </Controls>
           </ReactFlow>
           <SimBar sim={sim} />
           <SimSheet />
@@ -212,16 +326,32 @@ function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge,
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center pb-24">
               <div className="max-w-sm text-center">
                 <p className="mb-1 text-xl font-bold tracking-tight">Start with a client.</p>
-                <p className="text-sm text-ink-2">
+                <p className="mb-5 text-sm text-ink-2">
                   Add components from the left. Hover a component and drag from the dot on its edge to connect it. Requests
                   travel the way the arrow points.
                 </p>
+                <div className="pointer-events-auto flex flex-wrap justify-center gap-2">
+                  <button
+                    onClick={() => addAtCenter("client")}
+                    className="rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:bg-ink-2"
+                  >
+                    Add a client
+                  </button>
+                  {allTabs.some((t) => t.id === "templates") && (
+                    <button onClick={() => setTab("templates")} className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold shadow-sm hover:bg-wash">
+                      Start from a template
+                    </button>
+                  )}
+                  <button onClick={() => setShowTour(true)} className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold shadow-sm hover:bg-wash">
+                    Show me around
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        <aside className="w-[340px] shrink-0 overflow-y-auto border-l border-line bg-white">
+        <aside data-tour="inspector" className="w-[340px] shrink-0 overflow-y-auto border-l border-line bg-white">
           {selectedNode ? (
             <NodeInspector
               key={selectedNode.id}
@@ -275,6 +405,16 @@ function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge,
           )}
         </aside>
       </div>
+      {showTour && <Tour steps={EDITOR_TOUR} onDone={endTour} />}
+      {showKeys && (
+        <ShortcutsDialog
+          onClose={() => setShowKeys(false)}
+          onTour={() => {
+            setShowKeys(false);
+            setShowTour(true);
+          }}
+        />
+      )}
     </SimContext.Provider>
   );
 }

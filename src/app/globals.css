@@ -79,3 +79,17 @@ input[type="range"] {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(300%); }
 }
+
+/* Connection dots appear on the selected component too, not just on hover. */
+.react-flow__node.selected .react-flow__handle {
+  opacity: 1;
+}
+.react-flow__controls-button:disabled {
+  opacity: 0.35;
+}
+/* Lucide icons are stroked, while React Flow's control styles fill SVGs. */
+.react-flow__controls-button svg.lucide {
+  fill: none;
+  max-width: 14px;
+  max-height: 14px;
+}
