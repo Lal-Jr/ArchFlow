@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Activity, ArrowRight, BookOpen, GraduationCap, Skull, Waves } from "lucide-react";
 import { HeroDiagram } from "@/components/HeroDiagram";
 import { ProblemList } from "@/components/ProblemList";
+import { PROBLEMS } from "@/lib/problems";
 import { NavLink, Wordmark } from "@/components/TopBar";
 
 const FEATURES = [
@@ -23,7 +24,7 @@ const FEATURES = [
   {
     Icon: GraduationCap,
     title: "Practice the interview",
-    body: "Six classic design problems with briefs, graded feedback, hints and step-by-step reference walkthroughs.",
+    body: "24 of the most-asked design problems, each with requirements, API, data model, the reasoning behind every choice, graded feedback and a reference walkthrough.",
   },
 ];
 
@@ -55,6 +56,7 @@ export default function Home() {
             <NavLink href="/sandbox">Simulator</NavLink>
             <NavLink href="/challenges">Challenges</NavLink>
             <NavLink href="#problems">Practice</NavLink>
+            <NavLink href="/guide">Guide</NavLink>
             <NavLink href="/learn">Glossary</NavLink>
           </div>
           <Link href="/sandbox" className="ml-auto rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink hover:bg-white/90">
@@ -148,8 +150,11 @@ export default function Home() {
       <section id="problems" className="mx-auto max-w-6xl scroll-mt-6 px-4 py-20 sm:px-6">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="mb-2 text-4xl font-bold tracking-tight">Interview problems</h2>
-            <p className="text-ink-2">Design it yourself, get graded, then load the reference design into the simulator.</p>
+            <h2 className="mb-2 text-4xl font-bold tracking-tight">{PROBLEMS.length} interview problems</h2>
+            <p className="text-ink-2">
+              The questions top companies ask. Design it yourself, get graded, read the full guide, then load the reference design
+              into the simulator.
+            </p>
           </div>
         </div>
         <ProblemList />
