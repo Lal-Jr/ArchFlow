@@ -29,8 +29,9 @@ A visual distributed-systems simulator for learning system design: draw an archi
 |---|---|
 | **What it is** | An interactive whiteboard that simulates how a distributed system behaves under load — like a flight simulator for backend architecture. |
 | **Who it's for** | Engineers preparing for system design interviews, students learning distributed systems, and anyone who wants to *see* why caches, queues, and replicas matter. |
+| **What you learn** | 24 of the most-asked system design questions (from Google, Meta, Amazon and Uber loops), each with requirements, estimates, API, data model, the reasoning behind every choice, follow-ups and common mistakes — plus a 7-step interview framework, a concepts primer and an FAQ. |
 | **What it shows** | Throughput, average and p99 latency, error rate, queue depth and estimated monthly cost — per component and for the whole system — updating 10 times a second. |
-| **How it's built** | Next.js + React + TypeScript, React Flow for the canvas, and a custom rate-based simulation engine written from scratch (no simulation libraries), covered by 76 tests. Runs entirely in the browser. |
+| **How it's built** | Next.js + React + TypeScript, React Flow for the canvas, and a custom rate-based simulation engine written from scratch (no simulation libraries), covered by 180 tests. Runs entirely in the browser. |
 
 ---
 
@@ -58,6 +59,19 @@ Four incidents with fixed traffic and hard goals: error rate, worst p99 latency 
   <tr>
     <td width="50%"><img src="docs/media/challenges.png" alt="Challenge list" /><br /><sub><b>Challenges</b> — Black Friday, Database outage, Retry storm and Order backlog.</sub></td>
     <td width="50%"><img src="docs/media/challenge.png" alt="Database outage challenge passed" /><br /><sub><b>Passed</b> — a circuit breaker keeps p99 at 58ms while Postgres is down, at $695/month.</sub></td>
+  </tr>
+</table>
+
+### 5. Learn the why, not just the boxes
+24 interview problems you can filter by difficulty, category, concept or company. Each has a **Guide** that walks the interview framework: requirements, estimates, API, data model, the design, *why* each decision was made, follow-ups and common mistakes.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/media/problems.png" alt="Problem browser with filters" /><br /><sub><b>Problem browser</b> — search by concept ("geohash", "WebSockets") or filter by difficulty, category and company.</sub></td>
+    <td width="50%"><img src="docs/media/problem-guide.png" alt="Problem guide: key decisions" /><br /><sub><b>Problem guide</b> — the reasoning behind each choice, e.g. why Redis seat holds <i>and</i> a SQL transaction.</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/media/guide.png" alt="The 7-step interview framework" /><br /><sub><b>The guide</b> — a 7-step framework for any question, with what each step sounds like out loud, plus a concepts primer and FAQ.</sub></td>
   </tr>
 </table>
 
@@ -153,11 +167,55 @@ Each challenge fixes the traffic, the duration and the goals. Press **Start chal
 
 ### Interview practice
 
-1. Choose a problem from the home page — URL Shortener, Rate Limiter, Chat App, News Feed, Video Streaming, or Ride Sharing.
-2. Read the **Brief**: requirements and back-of-the-envelope numbers.
-3. Draw your design, then click **Check my design** for a score and hints. The answer only appears if you click **Reveal answer**.
-4. Run traffic on your own design to check it survives.
-5. Switch to **Walkthrough** to step through the reference solution, or click **Simulate reference** to load it into the simulator.
+Every problem page has three views:
+
+| View | What it's for |
+|---|---|
+| **Practice** | Read the brief, draw your own design, and click **Check my design** for a score. Missing ideas show a hint first; the answer appears only if you click **Reveal answer**. Run traffic on your design to check it survives. |
+| **Guide** | The full answer in interview order: requirements → estimates → API → data model → high-level design (with why each component exists) → **key decisions and their reasoning** → follow-up questions → common mistakes → what's graded. |
+| **Walkthrough** | Build the reference design one component at a time (arrow keys work), or **Simulate reference** to load-test it. |
+
+**A suggested path:** start with the Easy problems, read the Guide *after* your first attempt, then retry until you score 100% and can explain every decision out loud.
+
+<details>
+<summary><b>All 24 problems</b> (click to expand)</summary>
+
+"Reported at" lists only companies where public interview guides report the question. Most questions come up at many companies.
+
+| Problem | Difficulty | Category | Key concepts | Reported at |
+|---|---|---|---|---|
+| **URL Shortener** — TinyURL / bit.ly | Easy | Infrastructure | Read-heavy caching, Unique ID generation, Base62 encoding | Google, Meta, Amazon |
+| **Distributed Rate Limiter** — Throttle API clients across a fleet | Easy | Infrastructure | Token bucket vs sliding window, Atomic counters, Distributed state | Google, Meta, Amazon |
+| **Pastebin** — Pastebin / GitHub Gist | Easy | Storage | Blob vs metadata storage, Read-heavy caching, Expiry / TTL | — |
+| **Proximity Service** — Yelp / nearby places | Easy | Location | Geohash / quadtree, Read-heavy geo search, Separate read and write paths | — |
+| **Chat Application** — WhatsApp / Messenger | Medium | Messaging | WebSockets, Presence, Message ordering | Meta |
+| **News Feed** — The Twitter / Instagram home timeline | Medium | Social | Fan-out on write vs read, Precomputed timelines, Celebrity problem | Meta, Google, Amazon |
+| **File Storage & Sync** — Dropbox / Google Drive | Medium | Storage | Chunking & deduplication, Presigned uploads, Metadata vs blob storage | Google, Amazon |
+| **Distributed Cache** — Redis / Memcached at scale | Medium | Infrastructure | Consistent hashing, Eviction (LRU), Replication & failover | Google, Amazon, Uber |
+| **Photo Sharing** — Instagram | Medium | Media | Media upload pipeline, Thumbnails / async processing, CDN delivery | Meta, Amazon |
+| **Live Comments** — live comments on a livestream | Medium | Social | Pub/sub fan-out, WebSockets / SSE, Hot partitions | — |
+| **Notification System** — a push / email / SMS notification service | Medium | Infrastructure | Queues per channel, Retries & dead-letter queues, User preferences | — |
+| **Search Autocomplete** — Google's typeahead suggestions | Medium | Search | Tries / prefix indexes, Precomputed top-K, Aggressive caching | Google |
+| **Ticket Booking** — Ticketmaster | Medium | Commerce | Seat holds with TTL locks, Strong consistency / transactions, Virtual waiting room | — |
+| **Game Leaderboard** — a real-time gaming leaderboard | Medium | Data | Redis sorted sets, Top-N and rank queries, Write-heavy counters | — |
+| **Distributed Job Scheduler** — cron at scale / Airflow | Medium | Infrastructure | Time-based scheduling, Work queues, At-least-once execution + idempotency | — |
+| **Online Judge** — LeetCode | Medium | Infrastructure | Sandboxed code execution, Async job queue, Burst handling (contests) | — |
+| **Video Streaming** — YouTube / Netflix | Hard | Media | Transcoding pipelines, Adaptive bitrate (HLS/DASH), CDN delivery | Google |
+| **Ride Sharing** — Uber / Lyft | Hard | Location | Geospatial indexing (geohash/quadtree), High-rate location ingest, Matching | Uber, Google, Amazon |
+| **Web Crawler** — Google's web crawler | Hard | Search | URL frontier, Politeness / per-domain rate limits, Deduplication (seen set) | Google |
+| **Payment System** — Stripe / a payment service | Hard | Commerce | Idempotency keys, Double-entry ledger, Exactly-once effects via at-least-once + dedup | — |
+| **Collaborative Editor** — Google Docs | Hard | Collaboration | Operational transform / CRDTs, WebSockets, Per-document ordering | Google |
+| **Metrics & Monitoring** — Datadog / Prometheus | Hard | Data | High-throughput ingestion, Time-series storage, Downsampling / rollups | — |
+| **Top-K Trending** — YouTube's top-K most viewed videos | Hard | Data | Stream processing, Windowed aggregation, Count-min sketch / approximate counting | — |
+| **Ad Click Aggregator** — ad click aggregation for Google AdSense | Hard | Data | Click tracking redirects, Deduplication / idempotency, Stream aggregation (Flink) | — |
+
+</details>
+
+### The guide (`/guide`)
+
+- **The 7-step framework** for answering any system design question in 45 minutes, with a time budget and an example of what each step sounds like out loud.
+- **16 core concepts** (scaling, caching, sharding, replication, CAP, queues, idempotency, rate limiting, retries and circuit breakers, consistent hashing, geospatial indexing, p99 and more), each with *what it is*, *when to use it* and *the tradeoff*.
+- **A searchable FAQ** covering the questions people ask most: how to use the app, what the simulation's numbers mean, how grading and challenges work, and how to practice for a real interview.
 
 The **Glossary** (`/learn`) covers all 17 components: what each one does, when to use it, its tradeoffs, and how the simulator models it.
 
@@ -210,7 +268,7 @@ Defaults live in [`src/lib/sim/config.ts`](src/lib/sim/config.ts); the engine is
 ## Engineering highlights
 
 - **Simulation engine written from scratch**, in pure TypeScript with no UI dependencies. Graphs are compiled once per edit (depth-first search drops cycles, Kahn's algorithm orders the rest); each tick is a forward pass for traffic and a backward pass that folds latency distributions and failure probabilities back to the clients.
-- **Tested like a library.** 76 tests cover the engine (conservation of traffic, cache-aside, overload, failover, queues, retries, breakers, autoscaling, tail latency), every reference solution (passes its own grader and stays healthy at default load), every challenge (starting design fails, intended fix passes, and each hint's claim holds), share-link encoding and the layout algorithm. GitHub Actions runs lint, typecheck, tests and a build on every push.
+- **Tested like a library.** 180 tests cover the engine (conservation of traffic, cache-aside, overload, failover, queues, retries, breakers, autoscaling, tail latency), all 24 reference solutions (each passes its own grader, stays healthy at default load, has a well-formed graph and a complete guide), every challenge (starting design fails, intended fix passes, and each hint's claim holds), share-link encoding and the layout algorithm. GitHub Actions runs lint, typecheck, tests and a build on every push.
 - **Live updates without re-rendering the graph.** Metrics flow through a small external store read with `useSyncExternalStore`, so 10 updates a second never rebuild the React Flow graph.
 - **Accurate in background tabs.** The loop advances by elapsed wall-clock time and catches up on throttled timers.
 - **Shareable links with no backend.** Designs are packed, deflated with `CompressionStream`, base64url-encoded into the URL hash, and strictly validated on the way back in.
@@ -222,16 +280,18 @@ Defaults live in [`src/lib/sim/config.ts`](src/lib/sim/config.ts); the engine is
 
 ```
 src/
-├── app/                   # Routes: home, /sandbox, /challenges, /problems/[slug], /learn, /api/review
+├── app/                   # Routes: home, /sandbox, /challenges, /problems/[slug], /guide, /learn, /api/review
 ├── components/
 │   ├── editor/            # Canvas, live nodes & edges, inspector, charts, tour, shortcuts, undo, sim hook
 │   ├── Sandbox.tsx        # Simulator page: templates and share links
 │   ├── ChallengeWorkspace.tsx / ChallengePanel.tsx
-│   └── Workspace.tsx      # Interview practice + walkthrough
+│   ├── ProblemGuide.tsx   # Per-problem guide (framework order)
+│   └── Workspace.tsx      # Practice, Guide and Walkthrough views
 └── lib/
     ├── sim/               # Engine, latency distributions, defaults & costs, traffic, insights
     ├── challenges.ts      # Challenge definitions and scoring
-    ├── problems.ts        # Interview problems, grading checkpoints, reference solutions
+    ├── problems/          # 24 interview problems: brief, API, data model, decisions, checkpoints, solution
+    ├── guide.ts           # Interview framework, concepts primer and FAQ content
     ├── share.ts           # Share-link encoding and validation
     ├── layout.ts          # "Tidy up" layered layout
     └── review.ts          # Optional AI review: request, schema, prompt
@@ -241,7 +301,13 @@ src/
 
 ## Adding a problem or challenge
 
-- **Problems** live in [`src/lib/problems.ts`](src/lib/problems.ts): `checkpoints` (what the grader looks for) and a `solution` (grid-placed nodes with optional simulation `config`, and edges with optional `ratio`). Node order is the walkthrough order.
+- **Problems** live in [`src/lib/problems/`](src/lib/problems) (one file per theme, types in `types.ts`). Each problem defines:
+  - the brief: `functional`, `nonFunctional`, `estimates`, plus `category`, `concepts` and sourced `askedAt`
+  - the answer: `api`, `dataModel` (with a *why* per store), `decisions` (the reasoning), `deepDives` and `mistakes`
+  - grading: `checkpoints` (a component type exists, or two types are connected)
+  - the reference `solution`: grid-placed nodes (with optional simulation `config`) and edges (with optional `ratio`). Node order is the walkthrough order.
+
+  The tests automatically check that a new problem passes its own grader, runs healthily in the simulator, and has a complete guide.
 - **Challenges** live in [`src/lib/challenges.ts`](src/lib/challenges.ts): traffic, duration, goals, a starting design, optional fixed `overrides`, and hints. Add a test in `challenges.test.ts` proving the start fails and your intended fix passes.
 
 ---
