@@ -27,3 +27,28 @@ describe.each(PROBLEMS.map((p) => [p.slug, p] as const))("%s reference solution"
     for (const n of problem.solution.nodes) expect(n.note.length).toBeGreaterThan(10);
   });
 });
+
+describe("problem library", () => {
+  it("has unique slugs", () => {
+    expect(new Set(PROBLEMS.map((p) => p.slug)).size).toBe(PROBLEMS.length);
+  });
+
+  it.each(PROBLEMS.map((p) => [p.slug, p] as const))("%s explains the why and how", (_, p) => {
+    expect(p.concepts.length).toBeGreaterThanOrEqual(3);
+    expect(p.api.length).toBeGreaterThanOrEqual(2);
+    expect(p.dataModel.length).toBeGreaterThanOrEqual(2);
+    expect(p.decisions.length).toBeGreaterThanOrEqual(3);
+    expect(p.deepDives.length).toBeGreaterThanOrEqual(3);
+    expect(p.mistakes.length).toBeGreaterThanOrEqual(3);
+    for (const d of p.dataModel) expect(d.why.length).toBeGreaterThan(20);
+  });
+
+  it.each(PROBLEMS.map((p) => [p.slug, p] as const))("%s has a well-formed solution graph", (_, p) => {
+    const ids = p.solution.nodes.map((n) => n.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const e of p.solution.edges) {
+      expect(ids).toContain(e.from);
+      expect(ids).toContain(e.to);
+    }
+  });
+});
