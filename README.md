@@ -31,7 +31,7 @@ A system design interview lab: sketch an architecture, give it a real request mi
 | **Who it's for** | Engineers preparing for system design interviews, students learning distributed systems, and anyone who wants to *see* why caches, queues, and replicas matter. |
 | **What you learn** | 24 of the most-asked system design questions (from Google, Meta, Amazon and Uber loops), each with requirements, estimates, API, data model, the reasoning behind every choice, follow-ups and common mistakes — plus a 7-step interview framework, a concepts primer and an FAQ. |
 | **What it shows** | Throughput, average and p99 latency, error rate, queue depth and estimated monthly cost — per component, per endpoint and for the whole system — updating 10 times a second. Plus a one-click **capacity measurement**: the most steady traffic a design sustains, what limits it, and its cost per 1,000 rps. |
-| **How it's built** | Next.js + React + TypeScript, React Flow for the canvas, and a custom rate-based simulation engine written from scratch (no simulation libraries), covered by 201 tests. Runs entirely in the browser. |
+| **How it's built** | Next.js + React + TypeScript, React Flow for the canvas, and a custom rate-based simulation engine written from scratch (no simulation libraries), covered by 226 tests. Runs entirely in the browser. |
 
 ---
 
@@ -194,7 +194,7 @@ Every problem page has three views:
 |---|---|
 | **Practice** | Read the brief, draw your own design, and click **Check my design** for a score. Missing ideas show a hint first; the answer appears only if you click **Reveal answer**. Run traffic on your design to check it survives. |
 | **Guide** | The full answer in interview order: requirements → estimates → API → data model → high-level design (with why each component exists) → **key decisions and their reasoning** → follow-up questions → common mistakes → what's graded. |
-| **Walkthrough** | Build the reference design one component at a time (arrow keys work), or **Simulate reference** to load-test it. |
+| **Walkthrough** | Build the reference design one component at a time (arrow keys work), or **Simulate reference** to load-test it. Read-heavy and write-heavy problems (URL Shortener, Pastebin, Proximity Service, Game Leaderboard) ship with a request mix taken from their API, and their services are bound to the endpoints they handle. |
 
 **A suggested path:** start with the Easy problems, read the Guide *after* your first attempt, then retry until you score 100% and can explain every decision out loud.
 
@@ -291,7 +291,7 @@ Defaults live in [`src/lib/sim/config.ts`](src/lib/sim/config.ts); the engine is
 ## Engineering highlights
 
 - **Simulation engine written from scratch**, in pure TypeScript with no UI dependencies. Graphs are compiled once per edit (depth-first search drops cycles, Kahn's algorithm orders the rest); each tick is a forward pass for traffic and a backward pass that folds latency distributions and failure probabilities back to the clients.
-- **Tested like a library.** 201 tests cover the engine (conservation of traffic, cache-aside, overload, failover, queues, retries, breakers, autoscaling, tail latency, per-endpoint routing), the capacity probe (finds the real bottleneck, is deterministic, flags runaway queues, shows what a read/write split buys), all 24 reference solutions (each passes its own grader, stays healthy at default load, has a well-formed graph and a complete guide), every challenge (starting design fails, intended fix passes, and each hint's claim holds), share-link encoding and the layout algorithm. GitHub Actions runs lint, typecheck, tests and a build on every push.
+- **Tested like a library.** 226 tests cover the engine (conservation of traffic, cache-aside, overload, failover, queues, retries, breakers, autoscaling, tail latency, per-endpoint routing), the capacity probe (finds the real bottleneck, is deterministic, flags runaway queues, shows what a read/write split buys), all 24 reference solutions (each passes its own grader, stays healthy at default load, routes every endpoint in its request mix, has a well-formed graph and a complete guide), every challenge (starting design fails, intended fix passes, and each hint's claim holds), share-link encoding and the layout algorithm. GitHub Actions runs lint, typecheck, tests and a build on every push.
 - **Live updates without re-rendering the graph.** Metrics flow through a small external store read with `useSyncExternalStore`, so 10 updates a second never rebuild the React Flow graph.
 - **Accurate in background tabs.** The loop advances by elapsed wall-clock time and catches up on throttled timers.
 - **Shareable links with no backend.** Designs are packed, deflated with `CompressionStream`, base64url-encoded into the URL hash, and strictly validated on the way back in.

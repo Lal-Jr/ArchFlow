@@ -110,11 +110,11 @@ export function resolveConfig(kind: ComponentType, partial?: Partial<NodeConfig>
 
 /** Plain-English description of how each role treats traffic — shown in the inspector. */
 export const ROLE_BEHAVIOR: Record<NodeRole, string> = {
-  source: "Generates traffic. Every outgoing edge receives each request.",
-  route: "Splits traffic evenly across healthy downstream nodes (health checks skip dead ones).",
+  source: "Generates traffic, optionally as a request mix of endpoints. Every outgoing edge receives each request.",
+  route: "Splits traffic evenly across healthy downstream nodes (health checks skip dead ones), sending each endpoint only to services that handle it.",
   limiter: "Passes up to its limit and rejects the rest with 429, then splits across downstream nodes.",
-  compute: "Calls every downstream dependency per request. With a cache attached, databases only see cache misses. Queues are called asynchronously.",
-  cache: "Serves hits itself. Misses continue to downstream nodes.",
+  compute: "Calls every downstream dependency per request. With a cache attached, databases only see read misses; writes always reach them. Queues are called asynchronously.",
+  cache: "Serves read hits itself. Misses and writes continue to downstream nodes.",
   queue: "Buffers messages. Consumers pull as fast as their capacity allows, so the backlog grows when producers outpace them.",
   store: "Terminal data store. Requests end here.",
 };

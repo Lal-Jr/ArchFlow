@@ -158,10 +158,12 @@ export function CapacityLab({
               <ul className="space-y-0.5 text-xs">
                 {result.overload.map((e) => (
                   <li key={e.key} className="flex items-center gap-1.5">
-                    {e.ok ? <Check size={12} className="text-good" /> : <X size={12} className="text-bad" />}
-                    <span className="font-mono">{e.key}</span>
-                    <span className={`ml-auto tabular-nums ${e.ok ? "text-ink-3" : "text-bad"}`}>
-                      {e.ok ? "keeps working" : `${Math.round(e.errorPct)}% errors`}
+                    {e.ok ? <Check size={12} className="shrink-0 text-good" /> : <X size={12} className="shrink-0 text-bad" />}
+                    <span className="min-w-0 truncate font-mono" title={e.key}>
+                      {e.key}
+                    </span>
+                    <span className={`ml-auto shrink-0 tabular-nums ${e.ok ? "text-ink-3" : "text-bad"}`}>
+                      {e.ok ? "keeps working" : e.errorPct > SLO.maxErrorPct ? `${Math.round(e.errorPct)}% errors` : `p99 ${fmtMs(e.p99Ms)}`}
                     </span>
                   </li>
                 ))}

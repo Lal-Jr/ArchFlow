@@ -23,6 +23,17 @@ describe.each(PROBLEMS.map((p) => [p.slug, p] as const))("%s reference solution"
     expect(Object.values(s.nodes).filter((m) => m.status === "overloaded")).toEqual([]);
   });
 
+  it("draws its request mix and bindings from its own API", () => {
+    const api = new Set(problem.api.map((a) => `${a.method} ${a.path.split("?")[0]}`));
+    for (const e of problem.traffic ?? []) expect(api).toContain(`${e.method} ${e.path}`);
+    const keys = new Set((problem.traffic ?? []).map((e) => `${e.method} ${e.path}`));
+    for (const n of problem.solution.nodes) for (const k of n.serves ?? []) expect(keys).toContain(k);
+    // Every endpoint is handled somewhere, so nothing in the reference design 404s.
+    const sim = toSim(graph.nodes, graph.edges);
+    const s = simulate(sim.nodes, sim.edges, 1000, 5);
+    expect(Object.values(s.nodes).every((m) => m.rejectRps === 0)).toBe(true);
+  });
+
   it("has a walkthrough note for every node", () => {
     for (const n of problem.solution.nodes) expect(n.note.length).toBeGreaterThan(10);
   });

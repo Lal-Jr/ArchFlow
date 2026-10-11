@@ -166,11 +166,11 @@ function Brief({ problem, onGuide }: { problem: Problem; onGuide: () => void }) 
       <Section title="Functional" items={problem.functional} />
       <Section title="Non-functional" items={problem.nonFunctional} />
       <Section title="Back of the envelope" items={problem.estimates} />
-      <div className="rounded-xl bg-ink p-4 text-xs leading-relaxed text-white">
+      <div className="rounded-xl bg-accent-wash p-4 text-xs leading-relaxed text-accent-ink">
         <div className="mb-1 font-semibold">Interview tip</div>
-        <span className="text-white/75">
-          Say the requirements and estimates out loud first. They justify every box you draw. Then run traffic at the
-          estimated rate and check that your design holds.
+        <span>
+          Say the requirements and estimates out loud first. They justify every box you draw. Then give the client a request
+          mix, run traffic at the estimated rate, and measure the design&apos;s capacity, so you can say how much it holds.
         </span>
       </div>
     </div>

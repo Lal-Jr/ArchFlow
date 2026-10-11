@@ -1,5 +1,6 @@
 import type { ComponentType } from "../catalog";
 import type { NodeConfig } from "../sim/config";
+import type { Endpoint } from "../sim/endpoints";
 
 export type Difficulty = "Easy" | "Medium" | "Hard";
 
@@ -13,6 +14,8 @@ export interface SolutionNode {
   note: string;
   /** Simulation overrides; otherwise the component's defaults apply. */
   config?: Partial<NodeConfig>;
+  /** Services: the endpoints (keys like "GET /feed") this one handles. */
+  serves?: string[];
 }
 
 export interface SolutionEdge {
@@ -90,6 +93,8 @@ export interface Problem {
   dataModel: DataEntity[];
   checkpoints: Checkpoint[];
   solution: { nodes: SolutionNode[]; edges: SolutionEdge[] };
+  /** The clients' request mix in the reference design, drawn from `api` (paths without query strings). */
+  traffic?: Endpoint[];
   /** "Why X and not Y?" — the reasoning behind the design's key choices. */
   decisions: { q: string; a: string }[];
   deepDives: { q: string; a: string }[];

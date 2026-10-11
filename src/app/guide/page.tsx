@@ -110,12 +110,12 @@ export default function GuidePage() {
           <GuideFaq />
         </section>
 
-        <Link href="/#problems" className="group flex items-center gap-5 rounded-2xl bg-ink p-8 text-white">
+        <Link href="/#problems" className="group flex items-center gap-5 rounded-2xl bg-paper p-8 hover:bg-accent-wash">
           <span className="flex-1">
             <span className="block text-2xl font-bold tracking-tight">Put it into practice</span>
-            <span className="block text-white/60">{PROBLEMS.length} interview problems, each with a full guide and a simulator.</span>
+            <span className="block text-ink-2">{PROBLEMS.length} interview problems, each with a full guide and a reference design you can measure.</span>
           </span>
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-ink transition-transform group-hover:translate-x-1">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white transition-transform group-hover:translate-x-1">
             <ArrowRight size={20} />
           </span>
         </Link>

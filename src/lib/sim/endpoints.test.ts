@@ -60,6 +60,15 @@ describe("endpoints in the engine", () => {
     expect(s.errorPct).toBe(0);
   });
 
+  it("doesn't count a scheduler's jobs as an endpoint", () => {
+    const s = simulate(
+      [withMix(node("c", "client"), READS_AND_WRITES), node("api", "service"), node("cron", "scheduler"), node("db", "sql_db")],
+      [edge("c", "api"), edge("api", "db"), edge("cron", "db")],
+      100,
+    );
+    expect(s.endpoints.map((e) => e.key)).toEqual(["GET /items", "POST /items"]);
+  });
+
   it("reports no endpoints when no client declares a mix", () => {
     const s = simulate([node("c", "client"), node("api", "service")], [edge("c", "api")], 100);
     expect(s.endpoints).toEqual([]);

@@ -638,10 +638,12 @@ export function tick(g: Compiled, state: SimState, dt: number, offeredRps: numbe
     // Compression can shave the extreme tail; p99 is never below the mean.
     p99Ms = Math.max(quantile(overall, 0.99), distMean(overall));
   }
+  // Endpoints are what clients call; a scheduler's jobs aren't one, and a lone unlabelled stream isn't either.
+  const clientClasses = perClass.filter((_, k) => clients.some((id) => g.sourceMix.get(id)![k] > 0));
   const endpoints: EndpointMetrics[] =
-    g.classes.length === 1 && g.classes[0] === ANY
+    clientClasses.every((p) => p.key === ANY)
       ? []
-      : perClass.map((p) => ({
+      : clientClasses.map((p) => ({
           key: p.key,
           offeredRps: p.offered,
           throughputRps: p.offered * (1 - p.errorFrac),

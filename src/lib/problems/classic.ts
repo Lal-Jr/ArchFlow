@@ -116,9 +116,13 @@ export const CLASSIC: Problem[] = [
         why: "A Key Generation Service pre-generates unique base62 keys and hands out batches, so servers never collide and codes aren't sequential.",
       },
     ],
+    traffic: [
+      { method: "GET", path: "/{code}", share: 99 },
+      { method: "POST", path: "/urls", share: 1 },
+    ],
     solution: {
       nodes: [
-        { id: "c", type: "client", label: "Client", col: 0, row: 1, note: "Users create short links and click them. Clicks (reads) dominate." },
+        { id: "c", type: "client", label: "Client", col: 0, row: 1, note: "Users create short links and click them. Clicks (reads) dominate: about 99 redirects for every new link." },
         { id: "lb", type: "load_balancer", label: "Load Balancer", col: 1, row: 1, note: "Distributes requests across stateless URL servers." },
         { id: "svc", type: "service", label: "URL Service", col: 2, row: 1, note: "POST /shorten creates a mapping; GET /{code} returns a 301/302 redirect." },
         { id: "cache", type: "cache", label: "Redis (code → URL)", col: 3, row: 0, note: "Hot codes live in memory with LRU eviction. Most redirects never touch the DB." },

@@ -85,13 +85,18 @@ export const DATA_INFRA: Problem[] = [
         why: "Publish score events to a stream for archiving and analytics off the hot path.",
       },
     ],
+    traffic: [
+      { method: "GET", path: "/leaderboard", share: 60 },
+      { method: "GET", path: "/leaderboard/players/{id}", share: 15 },
+      { method: "POST", path: "/scores", share: 25 },
+    ],
     solution: {
       nodes: [
         { id: "c", type: "client", label: "Players", col: 0, row: 1, note: "Submit scores after matches and check rankings." },
         { id: "lb", type: "load_balancer", label: "Load Balancer", col: 1, row: 1, note: "Splits writes and reads." },
-        { id: "score", type: "service", label: "Score Service", col: 2, row: 0.4, note: "Validates results server-side, then ZADDs and publishes an event." },
+        { id: "score", type: "service", label: "Score Service", col: 2, row: 0.4, note: "Validates results server-side, then ZADDs and publishes an event.", serves: ["POST /scores"] },
         { id: "zset", type: "cache", label: "Redis Sorted Sets", col: 3, row: 1, note: "One sorted set per season (and per region). Rank queries are O(log N).", config: { replicas: 2 } },
-        { id: "read", type: "service", label: "Leaderboard Service", col: 2, row: 1.7, note: "Top 100 and around-me queries, with names hydrated." },
+        { id: "read", type: "service", label: "Leaderboard Service", col: 2, row: 1.7, note: "Top 100 and around-me queries, with names hydrated.", serves: ["GET /leaderboard", "GET /leaderboard/players/{id}"] },
         { id: "players", type: "sql_db", label: "Player Profiles", col: 3, row: 2.4, note: "Names and avatars." },
         { id: "events", type: "stream", label: "Score Events", col: 3, row: -0.2, note: "Every accepted score." },
         { id: "arch", type: "worker", label: "Archiver", col: 4, row: -0.2, note: "Persists history and feeds anti-cheat checks." },
@@ -100,8 +105,8 @@ export const DATA_INFRA: Problem[] = [
       ],
       edges: [
         { from: "c", to: "lb" },
-        { from: "lb", to: "score", ratio: 1 },
-        { from: "lb", to: "read", ratio: 3 },
+        { from: "lb", to: "score", label: "POST /scores" },
+        { from: "lb", to: "read", label: "reads" },
         { from: "score", to: "zset", label: "ZADD" },
         { from: "score", to: "events" },
         { from: "events", to: "arch" },

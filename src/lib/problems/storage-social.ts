@@ -79,6 +79,10 @@ export const STORAGE_SOCIAL: Problem[] = [
         why: "Writes upload the content, and reads fetch it on a cache miss.",
       },
     ],
+    traffic: [
+      { method: "GET", path: "/pastes/{id}", share: 95 },
+      { method: "POST", path: "/pastes", share: 5 },
+    ],
     solution: {
       nodes: [
         { id: "c", type: "client", label: "Users", col: 0, row: 1, note: "Create pastes and open shared links. Reads dominate." },

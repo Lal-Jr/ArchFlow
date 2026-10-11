@@ -126,7 +126,14 @@ export function ProblemGuide({ problem, onPractice, onWalkthrough }: { problem: 
             </ul>
           </Section>
 
-          <Section id="api" n={3} title="API design" intro="Define the contract before the boxes. It shows the interviewer exactly what the system must support.">
+          <Section
+            id="api"
+            n={3}
+            title="API design"
+            intro={`Define the contract before the boxes. It shows the interviewer exactly what the system must support.${
+              problem.traffic ? " Traffic is each endpoint's share of the reference design's request mix." : ""
+            }`}
+          >
             <div className="overflow-x-auto rounded-2xl border border-line">
               <table className="w-full text-left text-sm">
                 <thead className="bg-wash text-xs uppercase tracking-wider text-ink-3">
@@ -134,6 +141,7 @@ export function ProblemGuide({ problem, onPractice, onWalkthrough }: { problem: 
                     <th className="px-4 py-2.5 font-semibold">Method</th>
                     <th className="px-4 py-2.5 font-semibold">Endpoint</th>
                     <th className="px-4 py-2.5 font-semibold">What it does</th>
+                    {problem.traffic && <th className="px-4 py-2.5 text-right font-semibold">Traffic</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -144,6 +152,7 @@ export function ProblemGuide({ problem, onPractice, onWalkthrough }: { problem: 
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">{a.path}</td>
                       <td className="px-4 py-3 text-ink-2">{a.purpose}</td>
+                      {problem.traffic && <td className="px-4 py-3 text-right tabular-nums text-ink-2">{trafficShare(problem, a)}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -273,4 +282,12 @@ export function ProblemGuide({ problem, onPractice, onWalkthrough }: { problem: 
       </div>
     </div>
   );
+}
+
+/** An endpoint's share of the reference design's request mix, e.g. "95%", or "—" when it isn't in the mix. */
+function trafficShare(problem: Problem, a: Problem["api"][number]) {
+  const mix = problem.traffic ?? [];
+  const total = mix.reduce((n, e) => n + e.share, 0);
+  const e = mix.find((e) => e.method === a.method && e.path === a.path.split("?")[0]);
+  return e && total > 0 ? `${Math.round((e.share / total) * 100)}%` : "—";
 }

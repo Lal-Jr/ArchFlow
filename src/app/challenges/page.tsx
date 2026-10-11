@@ -18,6 +18,7 @@ export default function ChallengesPage() {
         </nav>
       </TopBar>
       <main className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-6">
+        <p className="mb-3 text-sm font-medium text-accent">Incident drills</p>
         <h1 className="mb-3 text-5xl font-bold tracking-tighter">Challenges</h1>
         <p className="mb-12 max-w-2xl text-lg text-ink-2">
           Real incidents, fixed traffic, a budget. Each component&apos;s specs are locked, so you win with architecture:

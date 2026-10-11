@@ -176,8 +176,8 @@ export const FAQ: { group: string; items: Faq[] }[] = [
   {
     group: "Getting started",
     items: [
-      { q: "What is ArchFlow for?", a: "Learning system design by doing it: draw an architecture, push simulated traffic through it, and see where it breaks. It's built for interview prep, and for anyone who wants to understand why caches, queues and replicas exist." },
-      { q: "Where should I start?", a: "Open the Simulator and follow the guided tour. Then pick an Easy interview problem (URL Shortener or Pastebin), read its Guide, and try Practice mode. When you're comfortable, take a Challenge." },
+      { q: "What is ArchFlow for?", a: "Putting numbers on a system design. Sketch an architecture, give it a request mix, and measure how much traffic it sustains, what it costs and which component limits it. It's built for interview prep, and for anyone who wants to understand why caches, queues and replicas exist." },
+      { q: "Where should I start?", a: "Open the Lab and follow the guided tour. Then pick an Easy interview problem (URL Shortener or Pastebin), read its Guide, and try Practice mode. When you're comfortable, take a Challenge." },
       { q: "Do I need an account? Where is my work saved?", a: "No account is needed. Designs, scores and challenge results are saved in your browser's local storage. Clearing site data removes them, so share a link if you want a copy elsewhere." },
       { q: "Can I use it on my phone?", a: "The editor is designed for a desktop or laptop screen. The guides and problem pages read fine on a phone." },
     ],
@@ -189,6 +189,8 @@ export const FAQ: { group: string; items: Faq[] }[] = [
       { q: "Which way should arrows point?", a: "In the direction requests travel: Client → Load Balancer → Service → Database. If a component never lights up when you run traffic, check its arrows." },
       { q: "What do the numbers on a connection mean?", a: "For routers (load balancers, gateways) it's a traffic weight: 7 vs 1 sends 7 reads for every write. For services it's calls per request: 0.01 is a rare call, 200 is fan-out to 200 followers. Click a connection to set it." },
       { q: "Why does a database next to a cache get less traffic?", a: "That's cache-aside: the simulator assumes the service checks the cache first, so the database only sees misses (20% at an 80% hit rate). Set the connection ratio to 1 if every request really hits the database." },
+      { q: "What is a request mix?", a: "The endpoints a client calls and how often, e.g. 95% GET /feed and 5% POST /posts. Click a client to set one, or pick a preset. GETs are reads that a cache can answer; POST, PUT and DELETE are writes that go through caches to the database. Without a mix, a client sends one unlabelled stream of reads." },
+      { q: "How do I send an endpoint to a specific service?", a: "Click the service and untick the endpoints it shouldn't handle under Handles. Load balancers then send each endpoint only to services that handle it. If nothing behind a router handles an endpoint, those requests fail with a 404, and the insights panel names the endpoint." },
       { q: "I made a mistake. Can I undo it?", a: "Yes: ⌘/Ctrl+Z to undo and ⌘/Ctrl+Shift+Z to redo, or use the buttons in the canvas toolbar. Press ? to see every shortcut." },
       { q: "My diagram is messy.", a: "Press L (or the grid button in the toolbar) to tidy it into a left-to-right layout." },
     ],
@@ -202,6 +204,9 @@ export const FAQ: { group: string; items: Faq[] }[] = [
       { q: "Why does latency shoot up before a component is at 100%?", a: "Queueing. As utilization climbs past about 75%, requests increasingly wait behind each other. That's why real systems run at 60–70% and keep headroom." },
       { q: "What do retries and circuit breakers do here?", a: "Retries resend failed calls, which helps with blips but multiplies load on a struggling dependency (a retry storm). A circuit breaker stops calling a dependency that fails more than half its requests for 5 seconds, failing fast so it can recover." },
       { q: "Why doesn't autoscaling fix a spike immediately?", a: "New replicas take 10 seconds to provision, like real cloud instances. Spikes shorter than that have to be absorbed by existing capacity or a queue." },
+      { q: "What does Measure capacity do?", a: "It runs your design headlessly at steadily higher loads and finds the most traffic it sustains with under 1% errors and p99 under 500ms, with no queue growing forever. It names the component that gives out first, prices the design per 1,000 rps, and, with a request mix, shows which endpoints keep working at 2× that load. Press Compare to keep the result next to other versions of the design." },
+      { q: "Will the same design always measure the same?", a: "Yes. The simulation has no randomness, so an identical design always produces identical numbers. The short code next to Capacity is the design's fingerprint: if it matches, the result does too. Names and positions don't change it." },
+      { q: "Why does splitting reads and writes measure lower?", a: "Because pooling wins on raw throughput: two services that both handle everything share their spare capacity, while a split leaves each with only its own. What a split buys is isolation. Push past the ceiling and a shared pool fails every endpoint together, while writes on their own service keep working. The capacity panel shows both, so you can argue the tradeoff." },
       { q: "How is cost calculated?", a: "Each replica has a rough monthly price (for example, $70 for an app server and $350 for a SQL database). It's meant for comparing designs, not quoting a cloud bill." },
     ],
   },
@@ -211,7 +216,7 @@ export const FAQ: { group: string; items: Faq[] }[] = [
       { q: "How does grading work?", a: "Each problem has a list of key ideas an interviewer looks for, such as 'a cache for hot reads' or 'async fan-out'. Check my design shows which you've covered. Missing ideas show a hint first, and you choose when to reveal the answer." },
       { q: "Is the reference solution the only right answer?", a: "No. System design has many valid answers. The grader checks for key ideas, not an exact diagram, and the Guide explains the reasoning so you can defend your own choices." },
       { q: "Which companies ask these questions?", a: "Where public interview guides report a question at a company, it's shown as 'Reported at'. We only list sourced attributions, and most questions come up at many companies." },
-      { q: "How should I practice for a real interview?", a: "Time yourself for 45 minutes. Say requirements and estimates out loud, draw the design in Practice, run traffic at your estimated load, then compare with the Guide's key decisions and follow-up questions." },
+      { q: "How should I practice for a real interview?", a: "Time yourself for 45 minutes. Say requirements and estimates out loud, draw the design in Practice, give the client the problem's request mix, run traffic at your estimated load and measure its capacity, then compare with the Guide's key decisions and follow-up questions." },
       { q: "What if I don't know a component?", a: "Open the Glossary: every component has what it does, when to use it, its tradeoffs, and how the simulator models it. Hover components in the palette for a one-line summary." },
     ],
   },
@@ -220,7 +225,7 @@ export const FAQ: { group: string; items: Faq[] }[] = [
     items: [
       { q: "Why can't I change capacity in a challenge?", a: "Challenges test architecture, not bigger numbers. Per-replica specs and chaos are fixed, but replicas, new components, caches, queues, autoscaling, retries and breakers are all yours." },
       { q: "How are challenges scored?", a: "Error rate over the whole run, worst p99 latency after a 5-second warm-up, peak monthly cost, and for some challenges the queue backlog at the end. Pass all the goals to win, then try to do it cheaper." },
-      { q: "How do I share a design?", a: "In the Simulator, click Share design. The link contains the entire design, and there's no server involved. Anyone who opens it gets your exact setup, and their own sandbox is backed up first." },
+      { q: "How do I share a design?", a: "In the Lab, click Share design. The link contains the entire design, request mix included, and there's no server involved. Anyone who opens it gets your exact setup, and their own sandbox is backed up first." },
     ],
   },
 ];

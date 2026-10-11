@@ -45,7 +45,13 @@ export function solutionToGraph(problem: Problem): { nodes: ArchNodeType[]; edge
       id: n.id,
       type: "arch",
       position: { x: n.col * COL_W, y: n.row * ROW_H },
-      data: { kind: n.type, label: n.label, config: n.config },
+      data: {
+        kind: n.type,
+        label: n.label,
+        config: n.config,
+        ...(n.type === "client" && problem.traffic ? { endpoints: problem.traffic.map((e) => ({ ...e })) } : {}),
+        ...(n.serves ? { serves: [...n.serves] } : {}),
+      },
     })),
     edges: problem.solution.edges.map((e) => ({
       id: `${e.from}-${e.to}`,
