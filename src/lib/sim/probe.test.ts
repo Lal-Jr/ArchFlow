@@ -56,6 +56,46 @@ describe("capacity probe", () => {
     expect(r.ceilingRps).toBeLessThanOrEqual(400); // 2 workers × 200
   });
 
+  it("shows the isolation a read/write split buys, and what a shared pool buys instead", () => {
+    const mix = [
+      { method: "GET" as const, path: "/feed", share: 95 },
+      { method: "POST" as const, path: "/posts", share: 5 },
+    ];
+    const design = (bound: boolean) => ({
+      nodes: [
+        { ...node("c", "client"), endpoints: mix },
+        node("lb", "load_balancer"),
+        { ...node("read", "service"), ...(bound ? { serves: ["GET /feed"] } : {}) },
+        { ...node("write", "service", { replicas: 2 }), ...(bound ? { serves: ["POST /posts"] } : {}) },
+        node("db", "nosql_db"),
+      ],
+      edges: [edge("c", "lb"), edge("lb", "read"), edge("lb", "write"), edge("read", "db"), edge("write", "db")],
+    });
+    const split = design(true);
+    const shared = design(false);
+    const s = probeCapacity(split.nodes, split.edges);
+    const m = probeCapacity(shared.nodes, shared.edges);
+    // Pooling every replica sustains more steady traffic...
+    expect(m.ceilingRps).toBeGreaterThan(s.ceilingRps);
+    // ...but past the ceiling it fails every endpoint, while the split keeps writes working.
+    expect(m.overload!.every((e) => !e.ok)).toBe(true);
+    expect(s.overload!.find((e) => e.key === "POST /posts")!.ok).toBe(true);
+    expect(s.overload!.find((e) => e.key === "GET /feed")!.ok).toBe(false);
+  });
+
+  it("skips the isolation test without a request mix", () => {
+    const { nodes, edges } = oneBox();
+    expect(probeCapacity(nodes, edges).overload).toBeNull();
+  });
+
+  it("reports progress as it searches", () => {
+    const { nodes, edges } = oneBox();
+    const seen: number[] = [];
+    probeCapacity(nodes, edges, (done, estimate) => seen.push(done / estimate));
+    expect(seen.length).toBeGreaterThan(5);
+    expect(seen.every((f) => f > 0 && f <= 1)).toBe(true);
+  });
+
   it("fingerprints only what the engine reads", () => {
     const { nodes, edges } = oneBox();
     const renamed = nodes.map((n) => ({ ...n, label: `${n.label}!` }));

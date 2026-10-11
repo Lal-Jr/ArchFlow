@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Gauge, Plus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Gauge, Plus, X } from "lucide-react";
 import type { SimEdge, SimNode } from "@/lib/sim/engine";
 import { fmtMs, fmtRps, fmtUsd } from "@/lib/sim/format";
-import { fingerprint, probeCapacity, SLO, type ProbeResult } from "@/lib/sim/probe";
+import { fingerprint, OVERLOAD_FACTOR, probeCapacity, SLO, type ProbeResult } from "@/lib/sim/probe";
+import type { ProbeMessage, ProbeRequest } from "@/lib/sim/probe.worker";
 import { loadBenchmarks, saveBenchmarks, type Benchmark } from "@/lib/storage";
 
 const VERDICT: Record<NonNullable<ProbeResult["verdict"]>, string> = {
@@ -32,6 +33,10 @@ export function CapacityLab({
   const current = useMemo(() => fingerprint(sim.nodes, sim.edges), [sim]);
   const [result, setResult] = useState<ProbeResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const worker = useRef<Worker | null>(null);
+  const requestId = useRef(0);
+  useEffect(() => () => worker.current?.terminate(), []);
   // The editor only renders in the browser, so storage can be read up front.
   const [bench, setBench] = useState<Benchmark[]>(() => loadBenchmarks(storageKey));
   const persist = (list: Benchmark[]) => {
@@ -41,11 +46,26 @@ export function CapacityLab({
 
   const measure = () => {
     setBusy(true);
-    // Let "Measuring…" paint before the probe takes the main thread.
-    setTimeout(() => {
-      setResult(probeCapacity(sim.nodes, sim.edges));
+    setProgress(0);
+    const id = ++requestId.current;
+    const done = (r: ProbeResult) => {
+      if (id !== requestId.current) return;
+      setResult(r);
       setBusy(false);
-    }, 20);
+    };
+    try {
+      // The probe runs dozens of headless simulations; a worker keeps the canvas and controls responsive meanwhile.
+      worker.current ??= new Worker(new URL("../../lib/sim/probe.worker.ts", import.meta.url));
+      worker.current.onmessage = ({ data }: MessageEvent<ProbeMessage>) => {
+        if (data.id !== requestId.current) return;
+        if ("result" in data) done(data.result);
+        else setProgress(data.progress);
+      };
+      worker.current.postMessage({ id, nodes: sim.nodes, edges: sim.edges } satisfies ProbeRequest);
+    } catch {
+      // No worker support: measure on the main thread after "Measuring…" has painted.
+      setTimeout(() => done(probeCapacity(sim.nodes, sim.edges)), 20);
+    }
   };
 
   const stale = result && result.fingerprint !== current;
@@ -63,6 +83,7 @@ export function CapacityLab({
         capped: result.capped,
         limit: result.limit?.label ?? null,
         costAtCeiling: result.costAtCeiling,
+        ...(result.overload ? { held: result.overload.filter((e) => e.ok).length, endpoints: result.overload.length } : {}),
         at: Date.now(),
       },
     ]);
@@ -126,6 +147,27 @@ export function CapacityLab({
               </>
             )}
           </dl>
+          {result.overload && (
+            <div className="mt-3 border-t border-line pt-2">
+              <div
+                className="mb-1 text-[11px] font-semibold"
+                title="Isolation: how each endpoint fares when the whole design is pushed past its ceiling. Endpoints on their own path keep working; a shared pool fails them all together."
+              >
+                At {OVERLOAD_FACTOR}× this load
+              </div>
+              <ul className="space-y-0.5 text-xs">
+                {result.overload.map((e) => (
+                  <li key={e.key} className="flex items-center gap-1.5">
+                    {e.ok ? <Check size={12} className="text-good" /> : <X size={12} className="text-bad" />}
+                    <span className="font-mono">{e.key}</span>
+                    <span className={`ml-auto tabular-nums ${e.ok ? "text-ink-3" : "text-bad"}`}>
+                      {e.ok ? "keeps working" : `${Math.round(e.errorPct)}% errors`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {stale && <p className="mt-2 text-xs font-medium text-ink-2">The design changed since. Measure again.</p>}
         </div>
       )}
@@ -136,7 +178,7 @@ export function CapacityLab({
           disabled={busy || sim.nodes.length === 0}
           className="flex-1 rounded-lg bg-ink px-3 py-2 text-sm font-semibold text-white hover:bg-ink-2 disabled:opacity-50"
         >
-          {busy ? "Measuring…" : result && !stale ? "Measure again" : "Measure capacity"}
+          {busy ? `Measuring… ${Math.round(progress * 100)}%` : result && !stale ? "Measure again" : "Measure capacity"}
         </button>
         {result && !stale && !saved && (
           <button onClick={keep} className="flex items-center gap-1 rounded-lg border border-line-2 px-3 text-sm font-medium hover:border-ink">
@@ -181,7 +223,14 @@ export function CapacityLab({
                     style={{ width: `${(b.ceilingRps / top) * 100}%` }}
                   />
                 </div>
-                {b.limit && <div className="mt-0.5 text-[10px] text-ink-3">limited by {b.limit}</div>}
+                <div className="mt-0.5 flex justify-between text-[10px] text-ink-3">
+                  <span>{b.limit && `limited by ${b.limit}`}</span>
+                  {b.endpoints != null && (
+                    <span title={`Endpoints that keep working at ${OVERLOAD_FACTOR}× the ceiling`}>
+                      {b.held}/{b.endpoints} endpoints hold at {OVERLOAD_FACTOR}×
+                    </span>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

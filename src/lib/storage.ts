@@ -94,6 +94,9 @@ export interface Benchmark {
   capped: boolean;
   limit: string | null;
   costAtCeiling: number;
+  /** Isolation: endpoints still within the SLO at 2× the ceiling, out of how many. */
+  held?: number;
+  endpoints?: number;
   at: number;
 }
 

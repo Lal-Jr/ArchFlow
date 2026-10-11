@@ -31,7 +31,7 @@ A system design interview lab: sketch an architecture, give it a real request mi
 | **Who it's for** | Engineers preparing for system design interviews, students learning distributed systems, and anyone who wants to *see* why caches, queues, and replicas matter. |
 | **What you learn** | 24 of the most-asked system design questions (from Google, Meta, Amazon and Uber loops), each with requirements, estimates, API, data model, the reasoning behind every choice, follow-ups and common mistakes — plus a 7-step interview framework, a concepts primer and an FAQ. |
 | **What it shows** | Throughput, average and p99 latency, error rate, queue depth and estimated monthly cost — per component, per endpoint and for the whole system — updating 10 times a second. Plus a one-click **capacity measurement**: the most steady traffic a design sustains, what limits it, and its cost per 1,000 rps. |
-| **How it's built** | Next.js + React + TypeScript, React Flow for the canvas, and a custom rate-based simulation engine written from scratch (no simulation libraries), covered by 198 tests. Runs entirely in the browser. |
+| **How it's built** | Next.js + React + TypeScript, React Flow for the canvas, and a custom rate-based simulation engine written from scratch (no simulation libraries), covered by 201 tests. Runs entirely in the browser. |
 
 ---
 
@@ -48,11 +48,13 @@ Give a client a **request mix**, e.g. 95% `GET /feed` and 5% `POST /posts`. Read
 </table>
 
 ### 2. Measure what a design sustains, and compare builds
-**Measure capacity** searches for the highest steady load the design holds with under 1% errors and p99 under 500ms, names the component that gives out first and the worst endpoint, and prices the design per 1,000 rps. The engine has no randomness, so a design's fingerprint always measures the same. Keep each build and compare them side by side.
+**Measure capacity** searches for the highest steady load the design holds with under 1% errors and p99 under 500ms, names the component that gives out first and the worst endpoint, and prices the design per 1,000 rps. With a request mix, it also pushes the design to **2× its ceiling** and reports which endpoints keep working — the isolation a design buys. The search runs in a Web Worker, so the editor stays responsive while it measures. The engine has no randomness, so a design's fingerprint always measures the same. Keep each build and compare them side by side.
+
+> **Splitting isn't free.** Letting every service handle every endpoint pools their replicas, so it sustains *more* steady traffic than a read/write split of the same size. What the split buys is isolation: past the ceiling, a shared pool fails every endpoint together, while writes on their own service keep working. The capacity panel shows both numbers, so you can argue the tradeoff in an interview.
 
 <img src="docs/media/capacity.png" alt="Capacity panel: Build 1 sustains 2.3k rps, Build 2 with three more Feed API replicas sustains 4.7k rps at a lower cost per 1k rps" width="100%" />
 
-<sub>Three more Feed API replicas take the design from 2.3k to 4.7k rps — and lower the cost per 1,000 rps from $358 to $224.</sub>
+<sub>Three more Feed API replicas take the design from 2.3k to 4.7k rps and lower the cost per 1,000 rps from $358 to $224. At 2× either ceiling, reads fail but writes keep working.</sub>
 
 ### 3. Build a system in seconds
 Drag components onto the canvas, connect them, and press **Run traffic** (or hit `Space`). Requests flow in the direction of the arrows.
@@ -272,7 +274,7 @@ flowchart LR
 | **Capacity** | Each component handles `replicas × capacity` requests/sec. Excess work waits in a backlog; after about a second, requests time out and count as errors. |
 | **Queueing delay** | Latency grows with utilization along a "hockey stick" curve, plus time spent waiting in the backlog. |
 | **Endpoints** | Traffic is split into one class per endpoint in the clients' request mixes. Classes share capacity but route separately: `GET`s can be cache hits, other methods are writes that go through to the store, and routers send each endpoint only to services bound to it (404 if none is). |
-| **Capacity measurement** | Runs the design headlessly at a steady rate for 60 simulated seconds and judges the last 10: errors ≤ 1%, p99 ≤ 500ms, no queue growing without bound. Doubling then bisection finds the ceiling to within ~1%. |
+| **Capacity measurement** | Runs the design headlessly at a steady rate for 60 simulated seconds and judges the last 10: errors ≤ 1%, p99 ≤ 500ms, no queue growing without bound. Doubling then bisection finds the ceiling to within ~1%, then one run at 2× the ceiling checks each endpoint on its own (isolation). It runs in a Web Worker. |
 | **Routing** | Load balancers split traffic by weight across healthy targets. Services call every dependency; with a cache beside a database, the database only sees misses. Rate limiters reject the excess with 429s. |
 | **Queues** | Asynchronous: producers only wait for the enqueue, and consumers drain as fast as their capacity allows. |
 | **Retries** | A caller retrying `r` times multiplies load on a dependency failing at rate `F` by `1 + F + … + Fʳ` — the feedback loop behind retry storms. |
@@ -289,7 +291,7 @@ Defaults live in [`src/lib/sim/config.ts`](src/lib/sim/config.ts); the engine is
 ## Engineering highlights
 
 - **Simulation engine written from scratch**, in pure TypeScript with no UI dependencies. Graphs are compiled once per edit (depth-first search drops cycles, Kahn's algorithm orders the rest); each tick is a forward pass for traffic and a backward pass that folds latency distributions and failure probabilities back to the clients.
-- **Tested like a library.** 198 tests cover the engine (conservation of traffic, cache-aside, overload, failover, queues, retries, breakers, autoscaling, tail latency, per-endpoint routing), the capacity probe (finds the real bottleneck, is deterministic, flags runaway queues), all 24 reference solutions (each passes its own grader, stays healthy at default load, has a well-formed graph and a complete guide), every challenge (starting design fails, intended fix passes, and each hint's claim holds), share-link encoding and the layout algorithm. GitHub Actions runs lint, typecheck, tests and a build on every push.
+- **Tested like a library.** 201 tests cover the engine (conservation of traffic, cache-aside, overload, failover, queues, retries, breakers, autoscaling, tail latency, per-endpoint routing), the capacity probe (finds the real bottleneck, is deterministic, flags runaway queues, shows what a read/write split buys), all 24 reference solutions (each passes its own grader, stays healthy at default load, has a well-formed graph and a complete guide), every challenge (starting design fails, intended fix passes, and each hint's claim holds), share-link encoding and the layout algorithm. GitHub Actions runs lint, typecheck, tests and a build on every push.
 - **Live updates without re-rendering the graph.** Metrics flow through a small external store read with `useSyncExternalStore`, so 10 updates a second never rebuild the React Flow graph.
 - **Accurate in background tabs.** The loop advances by elapsed wall-clock time and catches up on throttled timers.
 - **Shareable links with no backend.** Designs are packed, deflated with `CompressionStream`, base64url-encoded into the URL hash, and strictly validated on the way back in.

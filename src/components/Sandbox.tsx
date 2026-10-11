@@ -50,7 +50,8 @@ const TEMPLATES: { id: string; title: string; blurb: string; graph: () => Graph 
   {
     id: "read-write-split",
     title: "Read/write split",
-    blurb: "A request mix of 95% reads and 5% writes, routed to separate services. Measure it, then merge them and compare.",
+    blurb:
+      "95% reads and 5% writes on separate services. Measure it, then let both services handle everything: the shared pool sustains more, but only the split keeps writes alive past the ceiling.",
     graph: () => {
       const g = gridGraph(
         [
