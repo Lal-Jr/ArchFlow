@@ -48,7 +48,9 @@ export function ArchNode({ id, data, selected }: NodeProps<ArchNodeType>) {
     role === "source"
       ? data.kind === "scheduler"
         ? `${fmtRps(cfg.sourceRps)} jobs/s`
-        : "Traffic source"
+        : data.endpoints?.length
+          ? `${data.endpoints.length} endpoint${data.endpoints.length > 1 ? "s" : ""}`
+          : "Traffic source"
       : `${m?.replicas ?? cfg.replicas} × ${fmtRps(cfg.capacity)}/s`;
   const scaling = m && m.pendingReplicas > m.replicas;
   const tags = [
@@ -56,6 +58,7 @@ export function ArchNode({ id, data, selected }: NodeProps<ArchNodeType>) {
     cfg.retries > 0 && `Retry ×${cfg.retries}`,
     cfg.circuitBreaker && "Breaker",
   ].filter(Boolean) as string[];
+  const serves = role === "compute" ? (data.serves ?? []) : [];
 
   return (
     <div
@@ -96,8 +99,13 @@ export function ArchNode({ id, data, selected }: NodeProps<ArchNodeType>) {
           </div>
         </div>
       </div>
-      {tags.length > 0 && (
+      {tags.length + serves.length > 0 && (
         <div className="-mt-1 flex flex-wrap gap-1 px-3 pb-2">
+          {serves.map((k) => (
+            <span key={k} title="Handles this endpoint" className="max-w-full truncate rounded bg-accent-wash px-1.5 py-0.5 font-mono text-[10px] font-medium text-accent-ink">
+              {k}
+            </span>
+          ))}
           {tags.map((t) => (
             <span key={t} className="rounded bg-wash px-1.5 py-0.5 text-[10px] font-medium text-ink-2">
               {t}
@@ -115,9 +123,11 @@ export function ArchNode({ id, data, selected }: NodeProps<ArchNodeType>) {
                 ? "no response"
                 : role === "queue"
                 ? `${fmtRps(m.backlog)} queued`
-                : m.throttleRps > 0.5
-                  ? `${fmtPct((m.throttleRps / m.inRps) * 100)} rejected`
-                  : fmtMs(m.ownMs)}
+                : m.rejectRps > 0.5
+                  ? `${fmtPct((m.rejectRps / m.inRps) * 100)} unrouted`
+                  : m.throttleRps > 0.5
+                    ? `${fmtPct((m.throttleRps / m.inRps) * 100)} rejected`
+                    : fmtMs(m.ownMs)}
             </span>
           </div>
           <div className="h-1 overflow-hidden rounded-full bg-line">

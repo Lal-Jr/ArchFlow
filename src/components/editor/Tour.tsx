@@ -29,7 +29,7 @@ export const EDITOR_TOUR: TourStep[] = [
   {
     target: "inspector",
     title: "Tune it and break it",
-    body: "Click any component to change its replicas, add retries or autoscaling, or kill it. Insights here explain what's going wrong and how to fix it.",
+    body: "Click a client to give it a request mix of endpoints, or any component to change its replicas, add retries or autoscaling, or kill it. With nothing selected, Measure capacity finds how much traffic the design sustains.",
   },
   {
     target: "metrics",

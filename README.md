@@ -2,9 +2,9 @@
 
 # ArchFlow
 
-**Design a backend. Load it with traffic. Watch it break — then fix it.**
+**Put a number on your architecture.**
 
-A visual distributed-systems simulator for learning system design: draw an architecture, push simulated traffic through it, and watch request flow, latency, queue buildup, failures, and bottlenecks play out live.
+A system design interview lab: sketch an architecture, give it a real request mix, and measure how much traffic it sustains, what it costs, and which component limits it — then rehearse the incidents an interviewer will ask about.
 
 **[▶ Try it live → archflow-sim.vercel.app](https://archflow-sim.vercel.app)**
 
@@ -27,32 +27,49 @@ A visual distributed-systems simulator for learning system design: draw an archi
 
 | | |
 |---|---|
-| **What it is** | An interactive whiteboard that simulates how a distributed system behaves under load — like a flight simulator for backend architecture. |
+| **What it is** | An interactive whiteboard that simulates how a distributed system behaves under load, and measures what a design can sustain so you can defend it with numbers. |
 | **Who it's for** | Engineers preparing for system design interviews, students learning distributed systems, and anyone who wants to *see* why caches, queues, and replicas matter. |
 | **What you learn** | 24 of the most-asked system design questions (from Google, Meta, Amazon and Uber loops), each with requirements, estimates, API, data model, the reasoning behind every choice, follow-ups and common mistakes — plus a 7-step interview framework, a concepts primer and an FAQ. |
-| **What it shows** | Throughput, average and p99 latency, error rate, queue depth and estimated monthly cost — per component and for the whole system — updating 10 times a second. |
-| **How it's built** | Next.js + React + TypeScript, React Flow for the canvas, and a custom rate-based simulation engine written from scratch (no simulation libraries), covered by 180 tests. Runs entirely in the browser. |
+| **What it shows** | Throughput, average and p99 latency, error rate, queue depth and estimated monthly cost — per component, per endpoint and for the whole system — updating 10 times a second. Plus a one-click **capacity measurement**: the most steady traffic a design sustains, what limits it, and its cost per 1,000 rps. |
+| **How it's built** | Next.js + React + TypeScript, React Flow for the canvas, and a custom rate-based simulation engine written from scratch (no simulation libraries), covered by 198 tests. Runs entirely in the browser. |
 
 ---
 
 ## See it in action
 
-### 1. Build a system in seconds
+### 1. Model the requests, not just the boxes
+Give a client a **request mix**, e.g. 95% `GET /feed` and 5% `POST /posts`. Reads can be answered by caches; writes go through to the database. Tick which endpoints each service **handles**, and routers send each endpoint only to the services bound to it. Metrics are reported per endpoint, so a write path that's starving next to healthy reads is obvious.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/media/request-mix.png" alt="Client inspector with a request mix of GET /feed and POST /posts" /><br /><sub><b>Request mix</b> — endpoints, methods and relative shares on the client.</sub></td>
+    <td width="50%"><img src="docs/media/endpoints.png" alt="Under a spike, GET /feed fails 74% while POST /posts on its own service stays at 0%" /><br /><sub><b>Isolation</b> — a spike overloads the Feed API, but writes on their own service stay at 0% errors.</sub></td>
+  </tr>
+</table>
+
+### 2. Measure what a design sustains, and compare builds
+**Measure capacity** searches for the highest steady load the design holds with under 1% errors and p99 under 500ms, names the component that gives out first and the worst endpoint, and prices the design per 1,000 rps. The engine has no randomness, so a design's fingerprint always measures the same. Keep each build and compare them side by side.
+
+<img src="docs/media/capacity.png" alt="Capacity panel: Build 1 sustains 2.3k rps, Build 2 with three more Feed API replicas sustains 4.7k rps at a lower cost per 1k rps" width="100%" />
+
+<sub>Three more Feed API replicas take the design from 2.3k to 4.7k rps — and lower the cost per 1,000 rps from $358 to $224.</sub>
+
+### 3. Build a system in seconds
 Drag components onto the canvas, connect them, and press **Run traffic** (or hit `Space`). Requests flow in the direction of the arrows.
 
 <img src="docs/media/build.gif" alt="Building a client → load balancer → service → cache + database design and running traffic" width="100%" />
 
-### 2. Watch a failure cascade
+### 4. Watch a failure cascade
 The news-feed reference design under a 5× traffic spike. Each post fans out to 200 follower feeds, so the feed cache is hit with 82k writes/s. It overloads, and the feed reads that depend on it start failing. The event stream buffers the burst while the workers fall behind.
 
 <img src="docs/media/cascade.gif" alt="A traffic spike on the news feed design overloads the feed cache, workers, and feed service" width="100%" />
 
-### 3. Make it resilient
+### 5. Make it resilient
 Autoscaling adds replicas (after a realistic provisioning delay), retries amplify load on a struggling dependency, and a circuit breaker fails fast so it can recover. Below, Postgres has been killed: the breaker opens, latency stays at 25ms instead of piling up 1-second timeouts, and the autoscaler is adding a seventh API replica.
 
 <img src="docs/media/resilience.png" alt="Autoscaling API servers with a circuit breaker open to a dead database" width="100%" />
 
-### 4. Beat a challenge
+### 6. Beat a challenge
 Four incidents with fixed traffic and hard goals: error rate, worst p99 latency and a monthly budget. Component specs are locked, so you win with architecture, not bigger numbers.
 
 <table>
@@ -62,7 +79,7 @@ Four incidents with fixed traffic and hard goals: error rate, worst p99 latency 
   </tr>
 </table>
 
-### 5. Learn the why, not just the boxes
+### 7. Learn the why, not just the boxes
 24 interview problems you can filter by difficulty, category, concept or company. Each has a **Guide** that walks the interview framework: requirements, estimates, API, data model, the design, *why* each decision was made, follow-ups and common mistakes.
 
 <table>
@@ -88,7 +105,7 @@ Four incidents with fixed traffic and hard goals: error rate, worst p99 latency 
   </tr>
   <tr>
     <td width="50%"><img src="docs/media/tour.png" alt="Guided tour" /><br /><sub><b>Guided tour</b> — first-time visitors get a five-step walkthrough of the editor.</sub></td>
-    <td width="50%"><img src="docs/media/home.png" alt="Home page" /><br /><sub><b>Home</b> — design it, load it, break it.</sub></td>
+    <td width="50%"><img src="docs/media/home.png" alt="Home page" /><br /><sub><b>Home</b> — put a number on your architecture.</sub></td>
   </tr>
 </table>
 
@@ -115,7 +132,7 @@ Other scripts: `npm test` (unit tests), `npm run lint`, `npm run typecheck`, `np
 
 ### The simulator (`/sandbox`)
 
-1. **Pick a starting point.** Open the **Templates** tab and load *Three-tier web app*, or any of the six interview reference designs. Or start from a blank canvas.
+1. **Pick a starting point.** Open the **Templates** tab and load *Three-tier web app*, *Read/write split*, or any of the interview reference designs. Or start from a blank canvas.
 2. **Run traffic.** Press **Run traffic** (or `Space`). Dots flow along each connection, and the label shows requests per second.
 3. **Turn up the load.** Drag the traffic slider (10 – 50,000 rps) or choose a pattern:
 
@@ -135,7 +152,9 @@ Other scripts: `npm test` (unit tests), `npm run lint`, `npm run typecheck`, `np
 5. **Fix it.** Click a component to change **replicas**, **capacity**, **latency**, cache **hit rate**, or a rate limiter's limit. Hover the ? icons for what each setting means.
 6. **Make it resilient.** Turn on **autoscaling** (with a maximum), **retries**, or a **circuit breaker** on any service.
 7. **Break it.** In **Chaos**, kill a node or inject latency.
-8. **Share it.** **Share design** copies a link that contains the whole design. Anyone who opens it sees your exact setup (their own sandbox is backed up first).
+8. **Model the request mix.** Click a client and declare its endpoints (or pick a preset). Then click a service and untick the endpoints it shouldn't handle. Anything a router can't send anywhere fails with a 404, and the insights say where.
+9. **Measure it.** With nothing selected, press **Measure capacity**, then **Compare** to keep the result. Change the design, measure again, and see the builds side by side.
+10. **Share it.** **Share design** copies a link that contains the whole design. Anyone who opens it sees your exact setup (their own sandbox is backed up first).
 
 ### Keyboard shortcuts
 
@@ -252,6 +271,8 @@ flowchart LR
 |---|---|
 | **Capacity** | Each component handles `replicas × capacity` requests/sec. Excess work waits in a backlog; after about a second, requests time out and count as errors. |
 | **Queueing delay** | Latency grows with utilization along a "hockey stick" curve, plus time spent waiting in the backlog. |
+| **Endpoints** | Traffic is split into one class per endpoint in the clients' request mixes. Classes share capacity but route separately: `GET`s can be cache hits, other methods are writes that go through to the store, and routers send each endpoint only to services bound to it (404 if none is). |
+| **Capacity measurement** | Runs the design headlessly at a steady rate for 60 simulated seconds and judges the last 10: errors ≤ 1%, p99 ≤ 500ms, no queue growing without bound. Doubling then bisection finds the ceiling to within ~1%. |
 | **Routing** | Load balancers split traffic by weight across healthy targets. Services call every dependency; with a cache beside a database, the database only sees misses. Rate limiters reject the excess with 429s. |
 | **Queues** | Asynchronous: producers only wait for the enqueue, and consumers drain as fast as their capacity allows. |
 | **Retries** | A caller retrying `r` times multiplies load on a dependency failing at rate `F` by `1 + F + … + Fʳ` — the feedback loop behind retry storms. |
@@ -268,13 +289,13 @@ Defaults live in [`src/lib/sim/config.ts`](src/lib/sim/config.ts); the engine is
 ## Engineering highlights
 
 - **Simulation engine written from scratch**, in pure TypeScript with no UI dependencies. Graphs are compiled once per edit (depth-first search drops cycles, Kahn's algorithm orders the rest); each tick is a forward pass for traffic and a backward pass that folds latency distributions and failure probabilities back to the clients.
-- **Tested like a library.** 180 tests cover the engine (conservation of traffic, cache-aside, overload, failover, queues, retries, breakers, autoscaling, tail latency), all 24 reference solutions (each passes its own grader, stays healthy at default load, has a well-formed graph and a complete guide), every challenge (starting design fails, intended fix passes, and each hint's claim holds), share-link encoding and the layout algorithm. GitHub Actions runs lint, typecheck, tests and a build on every push.
+- **Tested like a library.** 198 tests cover the engine (conservation of traffic, cache-aside, overload, failover, queues, retries, breakers, autoscaling, tail latency, per-endpoint routing), the capacity probe (finds the real bottleneck, is deterministic, flags runaway queues), all 24 reference solutions (each passes its own grader, stays healthy at default load, has a well-formed graph and a complete guide), every challenge (starting design fails, intended fix passes, and each hint's claim holds), share-link encoding and the layout algorithm. GitHub Actions runs lint, typecheck, tests and a build on every push.
 - **Live updates without re-rendering the graph.** Metrics flow through a small external store read with `useSyncExternalStore`, so 10 updates a second never rebuild the React Flow graph.
 - **Accurate in background tabs.** The loop advances by elapsed wall-clock time and catches up on throttled timers.
 - **Shareable links with no backend.** Designs are packed, deflated with `CompressionStream`, base64url-encoded into the URL hash, and strictly validated on the way back in.
 - **Undo/redo that feels right.** Settled edits become single steps (a whole drag is one undo), and an edit that hasn't settled yet is committed before undoing it.
 - **Explainable output.** The insights engine turns metrics into specific advice, e.g. *"Scale to ~6 replicas to run at 70%."*
-- **Deliberate design system.** High-contrast black and white; color only signals status, and every status also has an icon and a label.
+- **Deliberate design system.** Black ink on white with one cobalt accent for the product's own voice; status colors only signal health, and every status also has an icon and a label.
 
 ### Project structure
 
@@ -283,12 +304,12 @@ src/
 ├── app/                   # Routes: home, /sandbox, /challenges, /problems/[slug], /guide, /learn, /api/review
 ├── components/
 │   ├── editor/            # Canvas, live nodes & edges, inspector, charts, tour, shortcuts, undo, sim hook
-│   ├── Sandbox.tsx        # Simulator page: templates and share links
+│   ├── Sandbox.tsx        # Lab page: templates and share links
 │   ├── ChallengeWorkspace.tsx / ChallengePanel.tsx
 │   ├── ProblemGuide.tsx   # Per-problem guide (framework order)
 │   └── Workspace.tsx      # Practice, Guide and Walkthrough views
 └── lib/
-    ├── sim/               # Engine, latency distributions, defaults & costs, traffic, insights
+    ├── sim/               # Engine, endpoints, capacity probe, latency distributions, defaults & costs, traffic, insights
     ├── challenges.ts      # Challenge definitions and scoring
     ├── problems/          # 24 interview problems: brief, API, data model, decisions, checkpoints, solution
     ├── guide.ts           # Interview framework, concepts primer and FAQ content

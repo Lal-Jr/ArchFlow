@@ -29,8 +29,10 @@ import { SimContext, useSimulation, type Simulation } from "./useSimulation";
 import type { Challenge } from "@/lib/challenges";
 import type { ReviewRequest } from "@/lib/review";
 import { ReviewPanel } from "./ReviewPanel";
+import { CapacityLab } from "./CapacityLab";
 import { Keyboard, LayoutGrid, Redo2, Undo2 } from "lucide-react";
 import { tidyLayout } from "@/lib/layout";
+import { endpointKey } from "@/lib/sim/endpoints";
 import { MOD, ShortcutsDialog } from "./ShortcutsDialog";
 import { EDITOR_TOUR, Tour } from "./Tour";
 import { useHistory } from "./useHistory";
@@ -357,6 +359,7 @@ function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge,
               key={selectedNode.id}
               node={selectedNode}
               locked={!!challenge}
+              endpointKeys={[...new Set(nodes.flatMap((n) => (n.data.kind === "client" ? (n.data.endpoints ?? []).filter((e) => e.share > 0).map(endpointKey) : [])))]}
               hasSyncDeps={edges.some(
                 (e) => e.source === selectedNode.id && !["queue", "stream"].includes(nodes.find((n) => n.id === e.target)?.data.kind ?? ""),
               )}
@@ -401,7 +404,9 @@ function EditorInner({ storageKey, initial, tabs, initialTab, footer, challenge,
             </div>
           )}
           {!selectedNode && !selectedEdge && !reviewing && (
-            <InsightsPanel compiled={sim.compiled} onFocus={focusNode} onReview={() => setReviewing(true)} />
+            <InsightsPanel compiled={sim.compiled} onFocus={focusNode} onReview={() => setReviewing(true)}>
+              {!challenge && <CapacityLab sim={sim.sim} storageKey={storageKey} onFocus={focusNode} />}
+            </InsightsPanel>
           )}
         </aside>
       </div>

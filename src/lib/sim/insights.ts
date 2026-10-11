@@ -200,6 +200,46 @@ export function deriveInsights(g: Compiled, s: Snapshot): Insight[] {
     }
   }
 
+  // Endpoints: traffic with nowhere to go, and one endpoint starving while another is fine.
+  const unrouted = new Set<string>();
+  for (const id of g.order) {
+    const n = g.nodes.get(id)!;
+    const m = s.nodes[id];
+    if (!m || m.rejectRps < 0.5 || m.status === "down") continue;
+    const keys = g.classes.filter((_, k) => g.rejects.get(id)![k]);
+    keys.forEach((k) => unrouted.add(k));
+    const router = ROLE[n.kind] === "route" || ROLE[n.kind] === "limiter";
+    out.push({
+      id: `reject-${id}`,
+      severity: "critical",
+      nodeId: id,
+      title: router ? `${n.label} has nowhere to send ${keys.join(", ")}` : `${n.label} doesn't handle ${keys.join(", ")}`,
+      detail: router
+        ? `None of the services behind it handle ${keys.length > 1 ? "these endpoints" : "this endpoint"}, so ${fmtRps(m.rejectRps)}/s fail with 404. Select a service and tick ${keys.length > 1 ? "them" : "it"} under Handles.`
+        : `${fmtRps(m.rejectRps)}/s arrive for endpoints it isn't bound to and fail with 404. Tick them under Handles, or put a router in front that sends them elsewhere.`,
+    });
+  }
+  const healthyEndpoint = s.endpoints.find((e) => e.offeredRps > 0 && e.errorPct < 1);
+  for (const e of s.endpoints) {
+    if (unrouted.has(e.key) || e.offeredRps <= 0 || e.errorPct < 5 || !healthyEndpoint) continue;
+    const k = g.classes.indexOf(e.key);
+    const hot = g.order.filter((id) => ["overloaded", "down"].includes(s.nodes[id]?.status ?? "") && (s.nodes[id].inByClass[k] ?? 0) > 0);
+    const shared = hot.find((id) => s.nodes[id].inByClass.some((v, j) => j !== k && v > 0));
+    const where = shared ?? hot[0];
+    const name = where ? g.nodes.get(where)!.label : null;
+    out.push({
+      id: `starved-${e.key}`,
+      severity: "warning",
+      nodeId: where,
+      title: `${e.key} is failing ${fmtPct(e.errorPct)} of requests`,
+      detail: shared
+        ? `${healthyEndpoint.key} is fine, but ${e.key} shares ${name} with heavier traffic, and ${name} is overloaded. Give ${e.key} a service of its own and bind it under Handles, so the rest can't crowd it out.`
+        : name
+          ? `${healthyEndpoint.key} is fine, but ${e.key}'s own path is overloaded at ${name}. Add capacity there.`
+          : `${healthyEndpoint.key} is fine, but something on ${e.key}'s path is failing it.`,
+    });
+  }
+
   if (s.ignoredEdges.length) {
     out.push({
       id: "cycles",

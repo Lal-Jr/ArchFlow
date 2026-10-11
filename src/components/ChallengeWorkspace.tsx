@@ -31,12 +31,12 @@ export function ChallengeWorkspace({ challenge }: { challenge: Challenge }) {
   return (
     <div className="flex h-screen flex-col bg-white">
       <TopBar>
-        <Link href="/challenges" className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white">
+        <Link href="/challenges" className="flex items-center gap-1.5 text-sm text-ink-3 hover:text-ink">
           <ArrowLeft size={15} /> Challenges
         </Link>
-        <span className="text-white/30">/</span>
+        <span className="text-ink-4">/</span>
         <h1 className="font-semibold">{challenge.title}</h1>
-        <DifficultyBadge difficulty={challenge.difficulty} invert />
+        <DifficultyBadge difficulty={challenge.difficulty} />
       </TopBar>
       <Editor
         key={version}

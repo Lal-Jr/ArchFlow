@@ -12,6 +12,67 @@ function insightsFor(nodes: ReturnType<typeof node>[], edges: ReturnType<typeof 
 }
 
 describe("deriveInsights", () => {
+  it("explains an endpoint that nothing behind a router handles", () => {
+    const ins = insightsFor(
+      [
+        {
+          ...node("c", "client"),
+          endpoints: [
+            { method: "GET", path: "/a", share: 1 },
+            { method: "POST", path: "/b", share: 1 },
+          ],
+        },
+        node("lb", "load_balancer"),
+        { ...node("api", "service"), serves: ["GET /a"] },
+      ],
+      [edge("c", "lb"), edge("lb", "api")],
+      100,
+    );
+    const r = ins.find((i) => i.id === "reject-lb")!;
+    expect(r.title).toBe("lb has nowhere to send POST /b");
+    expect(r.severity).toBe("critical");
+    // The unrouted endpoint isn't also reported as "starved".
+    expect(ins.some((i) => i.id === "starved-POST /b")).toBe(false);
+  });
+
+  it("tells a crowded-out endpoint to get a service of its own", () => {
+    const mix = {
+      endpoints: [
+        { method: "GET" as const, path: "/feed", share: 95 },
+        { method: "POST" as const, path: "/posts", share: 5 },
+      ],
+    };
+    // Reads mostly stop at the cache; writes all reach the database, which both share and which is overloaded.
+    const crowded = insightsFor(
+      [
+        { ...node("c", "client"), ...mix },
+        node("api", "service", { replicas: 200 }),
+        node("cache", "cache", { hitRate: 0.99, replicas: 4 }),
+        node("db", "sql_db"),
+      ],
+      [edge("c", "api"), edge("api", "cache"), edge("api", "db")],
+      100_000,
+    );
+    const w = crowded.find((i) => i.id === "starved-POST /posts")!;
+    expect(w.nodeId).toBe("db");
+    expect(w.detail).toMatch(/shares db with heavier traffic/);
+
+    const ins = insightsFor(
+      [
+        { ...node("c", "client"), ...mix },
+        node("lb", "load_balancer"),
+        { ...node("read", "service", { replicas: 10 }), serves: ["GET /feed"] },
+        { ...node("write", "service", { replicas: 1, capacity: 100 }), serves: ["POST /posts"] },
+      ],
+      [edge("c", "lb"), edge("lb", "read"), edge("lb", "write")],
+      4000,
+    );
+    const own = ins.find((i) => i.id === "starved-POST /posts")!;
+    expect(own.severity).toBe("warning");
+    expect(own.nodeId).toBe("write");
+    expect(own.detail).toMatch(/own path is overloaded at write/);
+  });
+
   it("names the bottleneck and the replicas that would fix it", () => {
     const ins = insightsFor([node("c", "client"), node("api", "service")], [edge("c", "api")], 3000);
     const b = ins.find((i) => i.id === "hot-api")!;

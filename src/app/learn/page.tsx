@@ -12,7 +12,7 @@ export default function LearnPage() {
     <div className="flex-1">
       <TopBar>
         <nav className="flex gap-1">
-          <NavLink href="/sandbox">Simulator</NavLink>
+          <NavLink href="/sandbox">Lab</NavLink>
           <NavLink href="/challenges">Challenges</NavLink>
           <NavLink href="/#problems">Practice</NavLink>
           <NavLink href="/guide">Guide</NavLink>

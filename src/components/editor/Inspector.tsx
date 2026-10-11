@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeftRight, CircleHelp, Minus, Plus, Trash2, X } from "lucide-react";
+import { endpointKey, isWrite, METHODS, MIX_PRESETS, type Endpoint, type HttpMethod } from "@/lib/sim/endpoints";
 import { CATALOG_BY_TYPE } from "@/lib/catalog";
 import type { ArchNodeData, ArchNodeType, FlowEdgeType } from "@/lib/graph";
 import {
@@ -142,10 +143,135 @@ function Header({ title, onClose, onDelete, icon }: { title: string; onClose: ()
   );
 }
 
+function RequestMix({ endpoints, onChange }: { endpoints: Endpoint[]; onChange: (e: Endpoint[] | undefined) => void }) {
+  const total = endpoints.reduce((a, e) => a + Math.max(0, e.share), 0);
+  const update = (i: number, patch: Partial<Endpoint>) => onChange(endpoints.map((e, j) => (i === j ? { ...e, ...patch } : e)));
+  return (
+    <div className="space-y-3">
+      <h3 className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider">
+        Request mix
+        <span
+          title="The endpoints these clients call, and how often. GETs are reads that caches can answer; everything else is a write that goes through to the database."
+          className="cursor-help font-normal text-ink-4 hover:text-ink"
+        >
+          <CircleHelp size={12} />
+        </span>
+      </h3>
+      {endpoints.length === 0 ? (
+        <div className="space-y-2">
+          <p className="text-xs leading-relaxed text-ink-3">
+            One unlabelled stream of reads. Declare endpoints to split reads from writes and bind each one to the services
+            that handle it.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {MIX_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => onChange(p.endpoints.map((e) => ({ ...e })))}
+                className="rounded-full border border-line-2 px-2.5 py-1 text-xs font-medium hover:border-ink"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <ul className="space-y-1.5">
+          {endpoints.map((e, i) => (
+            <li key={i} className="flex items-center gap-1.5">
+              <select
+                value={e.method}
+                onChange={(ev) => update(i, { method: ev.target.value as HttpMethod })}
+                aria-label="Method"
+                className={`rounded-md bg-wash px-1.5 py-1.5 font-mono text-[11px] font-semibold outline-none focus:ring-1 focus:ring-ink ${
+                  isWrite(endpointKey(e)) ? "text-warn-ink" : "text-accent-ink"
+                }`}
+              >
+                {METHODS.map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </select>
+              <input
+                value={e.path}
+                onChange={(ev) => update(i, { path: ev.target.value })}
+                onKeyDown={(ev) => ev.stopPropagation()}
+                aria-label="Path"
+                className="min-w-0 flex-1 rounded-md bg-wash px-2 py-1.5 font-mono text-xs outline-none focus:bg-white focus:ring-1 focus:ring-ink"
+              />
+              <input
+                type="number"
+                min={0}
+                value={e.share}
+                onChange={(ev) => update(i, { share: Math.max(0, Number(ev.target.value) || 0) })}
+                onKeyDown={(ev) => ev.stopPropagation()}
+                aria-label="Share"
+                title={total > 0 ? `${fmtPct((Math.max(0, e.share) / total) * 100)} of requests` : undefined}
+                className="w-14 rounded-md bg-wash px-2 py-1.5 text-right text-xs tabular-nums outline-none focus:bg-white focus:ring-1 focus:ring-ink"
+              />
+              <button
+                onClick={() => onChange(endpoints.length > 1 ? endpoints.filter((_, j) => j !== i) : undefined)}
+                aria-label="Remove endpoint"
+                className="rounded p-1 text-ink-3 hover:text-bad"
+              >
+                <X size={13} />
+              </button>
+            </li>
+          ))}
+          <li className="flex items-center justify-between pt-1">
+            <button
+              onClick={() => onChange([...endpoints, { method: "GET", path: "/new", share: 1 }])}
+              className="flex items-center gap-1 text-xs font-medium hover:underline"
+            >
+              <Plus size={12} /> Add endpoint
+            </button>
+            <span className="text-[11px] text-ink-3">Shares are relative</span>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function Handles({ keys, serves, onChange }: { keys: string[]; serves: string[]; onChange: (s: string[] | undefined) => void }) {
+  const all = serves.length === 0;
+  const toggle = (k: string) => {
+    const next = all ? keys.filter((x) => x !== k) : serves.includes(k) ? serves.filter((x) => x !== k) : [...serves, k];
+    onChange(next.length === 0 || next.length === keys.length ? undefined : next);
+  };
+  return (
+    <div className="space-y-2">
+      <h3 className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider">
+        Handles
+        <span
+          title="Which endpoints this service answers. Routers only send it those; anything else that reaches it fails with a 404."
+          className="cursor-help font-normal text-ink-4 hover:text-ink"
+        >
+          <CircleHelp size={12} />
+        </span>
+      </h3>
+      <div className="space-y-1">
+        {keys.map((k) => {
+          const on = all || serves.includes(k);
+          return (
+            <label key={k} className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 hover:bg-wash">
+              <input type="checkbox" checked={on} onChange={() => toggle(k)} className="accent-ink" />
+              <span className={`font-mono text-xs ${on ? "" : "text-ink-3"}`}>{k}</span>
+            </label>
+          );
+        })}
+      </div>
+      <p className="text-[11px] leading-snug text-ink-3">
+        {all ? "Handles every endpoint. Untick some to give it a dedicated job." : "Routers send it only the ticked endpoints."}
+      </p>
+    </div>
+  );
+}
+
 export function NodeInspector({
   node,
   locked = false,
   hasSyncDeps,
+  endpointKeys = [],
   onChange,
   onDelete,
   onClose,
@@ -155,6 +281,8 @@ export function NodeInspector({
   locked?: boolean;
   /** Whether this node calls anything synchronously — retries and breakers only matter then. */
   hasSyncDeps: boolean;
+  /** Every endpoint the design's clients declare, for binding services to them. */
+  endpointKeys?: string[];
   onChange: (data: Partial<ArchNodeData>) => void;
   onDelete: () => void;
   onClose: () => void;
@@ -206,6 +334,11 @@ export function NodeInspector({
               </div>
             ))}
           </div>
+        )}
+
+        {kind === "client" && <RequestMix endpoints={node.data.endpoints ?? []} onChange={(endpoints) => onChange({ endpoints })} />}
+        {role === "compute" && endpointKeys.length > 0 && (
+          <Handles keys={endpointKeys} serves={(node.data.serves ?? []).filter((k) => endpointKeys.includes(k))} onChange={(serves) => onChange({ serves })} />
         )}
 
         {role !== "source" && (

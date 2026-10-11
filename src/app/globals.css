@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 /*
- * Monochrome, high-contrast system: black ink on white, one gray canvas,
- * and color reserved for meaning (healthy / hot / failing / selected).
+ * Blueprint system: black ink on white paper, one cobalt accent for the product's own
+ * voice (navigation, measurements, endpoints), and status colors reserved for meaning
+ * (healthy / hot / failing).
  */
 @theme inline {
   --font-sans: var(--font-inter-tight);
@@ -24,7 +25,10 @@
   --color-warn-wash: #fff5dd;
   --color-bad: #e11900;
   --color-bad-wash: #fdebe8;
-  --color-accent: #276ef1;
+  --color-accent: #2b4fd8;
+  --color-accent-ink: #1c369e;
+  --color-accent-wash: #eceffd;
+  --color-paper: #f5f7fc;
 }
 
 :root {
@@ -38,7 +42,7 @@ body {
 }
 
 ::selection {
-  background: #000;
+  background: #2b4fd8;
   color: #fff;
 }
 
@@ -63,11 +67,20 @@ body {
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
 }
 .react-flow__edge.selected .af-edge-path {
-  stroke: #276ef1 !important;
+  stroke: #2b4fd8 !important;
 }
 
 input[type="range"] {
-  accent-color: #000;
+  accent-color: #2b4fd8;
+}
+
+/* Blueprint grid behind the landing hero. */
+.af-blueprint {
+  background-color: #f5f7fc;
+  background-image:
+    linear-gradient(rgb(43 79 216 / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(43 79 216 / 0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
 /* Reveal every connection dot while dragging a new edge. */

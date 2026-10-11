@@ -15,6 +15,30 @@ describe("share links", () => {
     );
   });
 
+  it("round-trips request mixes and endpoint bindings", async () => {
+    const g = solutionToGraph(PROBLEMS[0]);
+    g.nodes[0].data.endpoints = [
+      { method: "GET", path: "/:code", share: 99 },
+      { method: "POST", path: "/links", share: 1 },
+    ];
+    g.nodes[1].data.serves = ["POST /links"];
+    const back = await decodeDesign(await encodeDesign(g));
+    expect(back.nodes[0].data.endpoints).toEqual(g.nodes[0].data.endpoints);
+    expect(back.nodes[1].data.serves).toEqual(["POST /links"]);
+    expect(back.nodes[2].data.endpoints).toBeUndefined();
+  });
+
+  it("drops malformed endpoints from untrusted links", async () => {
+    const g = solutionToGraph(PROBLEMS[0]);
+    g.nodes[0].data.endpoints = [
+      { method: "HACK", path: "/x", share: 1 },
+      { method: "GET", path: "/ok", share: -1 },
+      { method: "GET", path: "/fine", share: 3 },
+    ] as never;
+    const back = await decodeDesign(await encodeDesign(g));
+    expect(back.nodes[0].data.endpoints).toEqual([{ method: "GET", path: "/fine", share: 3 }]);
+  });
+
   it("stays short enough to paste anywhere", async () => {
     const g = solutionToGraph(PROBLEMS.find((p) => p.slug === "news-feed")!);
     expect((await encodeDesign(g)).length).toBeLessThan(1500);

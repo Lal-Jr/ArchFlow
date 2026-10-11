@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ArchFlow — distributed systems simulator",
-  description: "Design backend architectures, push simulated traffic through them, and watch latency, queues, and failures propagate.",
+  title: "ArchFlow — the system design interview lab",
+  description:
+    "Sketch an architecture, give it a request mix, and measure how much traffic it sustains, what it costs and which component limits it. 24 interview problems with full guides.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

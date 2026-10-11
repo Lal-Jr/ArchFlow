@@ -84,3 +84,28 @@ export function saveChallengeBest(id: string, result: ChallengeBest) {
   if (prev?.passed && prev.cost <= result.cost) return;
   write(challengeKey(id), result);
 }
+
+/** A measured build, kept so several versions of a design can be compared side by side. */
+export interface Benchmark {
+  id: string;
+  label: string;
+  fingerprint: string;
+  ceilingRps: number;
+  capped: boolean;
+  limit: string | null;
+  costAtCeiling: number;
+  at: number;
+}
+
+const benchKey = (key: string) => `archflow:bench:${key}`;
+const MAX_BENCHMARKS = 8;
+
+export function loadBenchmarks(key: string): Benchmark[] {
+  const list = read<Benchmark[]>(benchKey(key));
+  return Array.isArray(list) ? list : [];
+}
+
+/** Saves the list, keeping the most recent few. */
+export function saveBenchmarks(key: string, list: Benchmark[]) {
+  write(benchKey(key), list.slice(-MAX_BENCHMARKS));
+}

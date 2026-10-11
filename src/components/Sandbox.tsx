@@ -48,6 +48,32 @@ const TEMPLATES: { id: string; title: string; blurb: string; graph: () => Graph 
       ),
   },
   {
+    id: "read-write-split",
+    title: "Read/write split",
+    blurb: "A request mix of 95% reads and 5% writes, routed to separate services. Measure it, then merge them and compare.",
+    graph: () => {
+      const g = gridGraph(
+        [
+          ["c", "client", "Users", 0, 1],
+          ["lb", "load_balancer", "Load Balancer", 1, 1],
+          ["read", "service", "Feed API", 2, 0],
+          ["write", "service", "Post API", 2, 2, { replicas: 2 }],
+          ["redis", "cache", "Redis", 3, 0, { hitRate: 0.9 }],
+          ["db", "sql_db", "Postgres", 3, 1],
+        ],
+        [["c", "lb"], ["lb", "read"], ["lb", "write"], ["read", "redis"], ["read", "db"], ["write", "db"]],
+      );
+      const byId = Object.fromEntries(g.nodes.map((n) => [n.id, n]));
+      byId.c.data.endpoints = [
+        { method: "GET", path: "/feed", share: 95 },
+        { method: "POST", path: "/posts", share: 5 },
+      ];
+      byId.read.data.serves = ["GET /feed"];
+      byId.write.data.serves = ["POST /posts"];
+      return g;
+    },
+  },
+  {
     id: "blank",
     title: "Blank canvas",
     blurb: "Start from nothing.",
@@ -135,7 +161,7 @@ export function Sandbox() {
         right={
           <button
             onClick={share}
-            className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-ink hover:bg-white/90"
+            className="flex items-center gap-1.5 rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-accent-ink"
           >
             {copied === "copied" ? <Check size={14} /> : <Link2 size={14} />}
             {copied === "copied" ? "Link copied" : "Share design"}
@@ -144,7 +170,7 @@ export function Sandbox() {
       >
         <nav className="flex gap-1">
           <NavLink href="/sandbox" active>
-            Simulator
+            Lab
           </NavLink>
           <NavLink href="/challenges">Challenges</NavLink>
           <NavLink href="/#problems">Practice</NavLink>

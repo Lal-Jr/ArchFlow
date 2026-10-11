@@ -28,13 +28,13 @@ export function Workspace({ problem }: { problem: Problem }) {
       <TopBar
         right={
           <>
-            <div className="flex rounded-full bg-white/10 p-1">
+            <div className="flex rounded-md bg-wash p-1">
               {(["practice", "guide", "solution"] as Mode[]).map((m) => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
-                  className={`rounded-full px-3.5 py-1 text-sm font-medium ${
-                    mode === m ? "bg-white text-ink" : "text-white/70 hover:text-white"
+                  className={`rounded px-3.5 py-1 text-sm font-medium ${
+                    mode === m ? "bg-white text-ink shadow-sm" : "text-ink-3 hover:text-ink"
                   }`}
                 >
                   {MODE_LABEL[m]}
@@ -43,19 +43,19 @@ export function Workspace({ problem }: { problem: Problem }) {
             </div>
             <Link
               href={`/sandbox?template=${problem.slug}`}
-              className="ml-2 flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-ink hover:bg-white/90"
+              className="ml-2 flex items-center gap-1.5 rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-accent-ink"
             >
-              <Play size={13} fill="#000" /> Simulate reference
+              <Play size={13} fill="#fff" /> Simulate reference
             </Link>
           </>
         }
       >
-        <Link href="/#problems" className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white">
+        <Link href="/#problems" className="flex items-center gap-1.5 text-sm text-ink-3 hover:text-ink">
           <ArrowLeft size={15} /> Problems
         </Link>
-        <span className="text-white/30">/</span>
+        <span className="text-ink-4">/</span>
         <h1 className="font-semibold">{problem.title}</h1>
-        <DifficultyBadge difficulty={problem.difficulty} invert />
+        <DifficultyBadge difficulty={problem.difficulty} />
       </TopBar>
       {mode === "practice" ? (
         <Practice problem={problem} onGuide={() => setMode("guide")} />

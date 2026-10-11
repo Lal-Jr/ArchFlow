@@ -2,12 +2,17 @@ import { Position, type Edge, type Node } from "@xyflow/react";
 import type { ComponentType } from "./catalog";
 import type { Problem } from "./problems";
 import { resolveConfig, type NodeConfig } from "./sim/config";
+import { endpointKey, type Endpoint } from "./sim/endpoints";
 import type { SimEdge, SimNode } from "./sim/engine";
 
 export type ArchNodeData = {
   kind: ComponentType;
   label: string;
   config?: Partial<NodeConfig>;
+  /** Clients: the request mix they send. */
+  endpoints?: Endpoint[];
+  /** Services: endpoint keys they handle (unset = all). */
+  serves?: string[];
   /** Walkthrough emphasis: the step being explained, or an unrevealed step. */
   emphasis?: "current" | "dim";
 };
@@ -54,8 +59,17 @@ export function solutionToGraph(problem: Problem): { nodes: ArchNodeType[]; edge
 }
 
 export function toSim(nodes: ArchNodeType[], edges: FlowEdgeType[]): { nodes: SimNode[]; edges: SimEdge[] } {
+  // Bindings to endpoints no client declares any more (renamed or removed) are dropped.
+  const declared = new Set(nodes.flatMap((n) => (n.data.kind === "client" ? (n.data.endpoints ?? []).map(endpointKey) : [])));
   return {
-    nodes: nodes.map((n) => ({ id: n.id, kind: n.data.kind, label: n.data.label, config: resolveConfig(n.data.kind, n.data.config) })),
+    nodes: nodes.map((n) => ({
+      id: n.id,
+      kind: n.data.kind,
+      label: n.data.label,
+      config: resolveConfig(n.data.kind, n.data.config),
+      ...(n.data.endpoints?.length ? { endpoints: n.data.endpoints } : {}),
+      ...(n.data.serves?.some((k) => declared.has(k)) ? { serves: n.data.serves.filter((k) => declared.has(k)) } : {}),
+    })),
     edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target, ratio: e.data?.ratio })),
   };
 }

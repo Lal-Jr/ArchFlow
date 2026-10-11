@@ -166,6 +166,8 @@ export function SimSheet() {
           the way requests travel.
         </div>
       ) : (
+        <>
+        {snap.endpoints.length > 0 && <EndpointStrip />}
         <div className="grid grid-cols-4 divide-x divide-line">
           {KPIS.map((k) => {
             const v = current[k.key];
@@ -205,7 +207,35 @@ export function SimSheet() {
             );
           })}
         </div>
+        </>
       )}
+    </div>
+  );
+}
+
+/** One chip per endpoint: its traffic, error rate and p99, so a starving write stands out from healthy reads. */
+function EndpointStrip() {
+  const snap = useSnapshot();
+  if (!snap) return null;
+  return (
+    <div className="flex gap-2 overflow-x-auto border-b border-line px-4 py-2">
+      <span className="self-center text-[10px] font-bold uppercase tracking-wider text-ink-3">Endpoints</span>
+      {snap.endpoints.map((e) => {
+        const [method, ...rest] = e.key.split(" ");
+        const bad = e.errorPct >= 1;
+        return (
+          <div
+            key={e.key}
+            className={`flex shrink-0 items-center gap-2 rounded-lg px-2.5 py-1 text-xs tabular-nums ${bad ? "bg-bad-wash" : "bg-wash"}`}
+          >
+            <span className={`font-mono text-[10px] font-bold ${method === "GET" ? "text-accent-ink" : "text-warn-ink"}`}>{method}</span>
+            <span className="font-mono">{rest.join(" ")}</span>
+            <span className="text-ink-3">{fmtRps(e.offeredRps)}/s</span>
+            <span className={bad ? "font-semibold text-bad" : "text-ink-3"}>{fmtPct(e.errorPct)} err</span>
+            <span className="text-ink-3">p99 {fmtMs(e.p99Ms)}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -241,10 +271,13 @@ export function InsightsPanel({
   compiled,
   onFocus,
   onReview,
+  children,
 }: {
   compiled: Compiled;
   onFocus: (id: string) => void;
   onReview: () => void;
+  /** Shown between the cost and the live insights. */
+  children?: React.ReactNode;
 }) {
   const snap = useSnapshot();
   const reviewEnabled = useReviewEnabled();
@@ -276,6 +309,7 @@ export function InsightsPanel({
           </span>
         </button>
       )}
+      {children}
       <h2 className="text-lg font-bold tracking-tight">Live insights</h2>
       <p className="mb-4 text-sm text-ink-3">
         {snap ? "What the simulator sees right now." : "Run traffic to see bottlenecks, backlogs and failures as they happen."}

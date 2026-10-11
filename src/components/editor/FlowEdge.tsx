@@ -46,7 +46,7 @@ export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
         markerEnd={markerEnd}
         className="af-edge-path"
         style={{
-          stroke: selected ? "#276ef1" : color,
+          stroke: selected ? "#2b4fd8" : color,
           strokeWidth: width,
           strokeDasharray: ignored || open || m?.status === "down" ? "6 5" : undefined,
           transition: "stroke 300ms, stroke-width 300ms",
